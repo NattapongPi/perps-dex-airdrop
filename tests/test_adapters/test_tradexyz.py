@@ -60,7 +60,7 @@ class TestTradeXYZGetTopCoins:
             result = adp.get_top_coins(3)
         assert result == hip3_symbols
         mock_hip3.assert_called_once_with(
-            "0x88806a71D74ad0a510b350545C9aE490912F0888", ":USDC", 3
+            "0x88806a71D74ad0a510b350545C9aE490912F0888", ":USDC", 3, quote="USDC"
         )
 
     def test_returns_at_most_n(self, adapter):

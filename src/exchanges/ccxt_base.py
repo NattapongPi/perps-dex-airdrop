@@ -61,6 +61,10 @@ class CcxtAdapter(ExchangeAdapter, ABC):
             "privateKey": api_secret,
         })
 
+        # Allow market orders without an explicit price (CCXT Hyperliquid converts
+        # them to IOC limit orders using last_price ± slippage%).
+        self._exchange.options["defaultSlippage"] = 0.05
+
         # Set builder code once — CCXT attaches it to every order.
         # builderFee=False means we supply our own address rather than using
         # CCXT's default fee schedule.

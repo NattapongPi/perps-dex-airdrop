@@ -109,7 +109,7 @@ def get_hip3_ohlcv(coin: str, timeframe: str, limit: int) -> pd.DataFrame:
     return df[["open", "high", "low", "close", "volume"]].astype(float).sort_index()
 
 
-def get_hip3_top_coins(deployer_address: str, perp_suffix: str, n: int) -> list[str]:
+def get_hip3_top_coins(deployer_address: str, perp_suffix: str, n: int, quote: str = "USDC") -> list[str]:
     """
     Return top N symbols for a HIP-3 DEX, ranked by open interest cap.
 
@@ -118,9 +118,11 @@ def get_hip3_top_coins(deployer_address: str, perp_suffix: str, n: int) -> list[
     deployer_address : str
         The HIP-3 DEX deployer address (from perpDexs API).
     perp_suffix : str
-        CCXT perp suffix for this exchange, e.g. ":USDC".
+        CCXT perp suffix for this exchange, e.g. ":USDC" or ":USDT".
     n : int
         Maximum number of symbols to return.
+    quote : str
+        Quote/settle currency, e.g. "USDC" or "USDT".
     """
     resp = requests.post(_HL_INFO_URL, json={"type": "perpDexs"}, timeout=10)
     resp.raise_for_status()
@@ -147,5 +149,5 @@ def get_hip3_top_coins(deployer_address: str, perp_suffix: str, n: int) -> list[
     # Rank by OI cap descending; assets missing from cap list get 0
     ranked = sorted(all_assets, key=lambda a: oi_caps.get(a, 0.0), reverse=True)
 
-    # Build CCXT symbol: "NVDA/USDC:USDC"
-    return [f"{asset}/USDC{perp_suffix}" for asset in ranked[:n]]
+    # Build CCXT symbol: "NVDA/USDC:USDC" or "AMZN/USDT:USDT"
+    return [f"{asset}/{quote}{perp_suffix}" for asset in ranked[:n]]

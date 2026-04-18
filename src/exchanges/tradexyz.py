@@ -50,7 +50,7 @@ class TradeXYZAdapter(HyperliquidAdapter):
         )
 
     def get_top_coins(self, n: int) -> list[str]:
-        return get_hip3_top_coins(_XYZ_DEPLOYER, self.PERP_SUFFIX, n)
+        return get_hip3_top_coins(_XYZ_DEPLOYER, self.PERP_SUFFIX, n, quote=self.QUOTE_CURRENCY)
 
     def get_ohlcv(self, symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
         base = symbol.split("/")[0]  # "CL" from "CL/USDC:USDC"
