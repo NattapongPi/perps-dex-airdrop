@@ -41,7 +41,11 @@ class DreamCashAdapter(HyperliquidAdapter):
     """
     DreamCash adapter — inherits all Hyperliquid logic.
     Overrides get_top_coins() to return only cash-tagged HIP-3 markets.
+    DreamCash settles in USDT (not USDC like standard Hyperliquid).
     """
+
+    QUOTE_CURRENCY = "USDT"
+    PERP_SUFFIX = ":USDT"
 
     def __init__(self, config: "Config") -> None:
         CcxtAdapter.__init__(
@@ -55,9 +59,9 @@ class DreamCashAdapter(HyperliquidAdapter):
         return get_hip3_top_coins(_DREAMCASH_DEPLOYER, self.PERP_SUFFIX, n)
 
     def get_ohlcv(self, symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
-        base = symbol.split("/")[0]  # "AMZN" from "AMZN/USDC:USDC"
+        base = symbol.split("/")[0]  # "AMZN" from "AMZN/USDT:USDT"
         return get_hip3_ohlcv(f"cash:{base}", timeframe, limit)
 
     def place_order(self, symbol: str, side: str, size: float, tp_pct: float, sl_pct: float):
-        ensure_hip3_market(self._exchange, symbol, "cash")
+        ensure_hip3_market(self._exchange, symbol, "cash", quote="USDT")
         return super().place_order(symbol, side, size, tp_pct, sl_pct)

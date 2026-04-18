@@ -28,7 +28,7 @@ _INTERVAL_MS = {
 }
 
 
-def ensure_hip3_market(exchange: Any, symbol: str, dex_prefix: str) -> None:
+def ensure_hip3_market(exchange: Any, symbol: str, dex_prefix: str, quote: str = "USDC") -> None:
     """
     Inject a synthetic market entry into a CCXT exchange's markets dict for a
     HIP-3 symbol that isn't in the standard Hyperliquid markets list.
@@ -47,11 +47,11 @@ def ensure_hip3_market(exchange: Any, symbol: str, dex_prefix: str) -> None:
         "id": prefixed,
         "symbol": symbol,
         "base": base,
-        "quote": "USDC",
-        "settle": "USDC",
+        "quote": quote,
+        "settle": quote,
         "baseId": prefixed,
-        "quoteId": "USDC",
-        "settleId": "USDC",
+        "quoteId": quote,
+        "settleId": quote,
         "type": "swap",
         "spot": False,
         "margin": False,
