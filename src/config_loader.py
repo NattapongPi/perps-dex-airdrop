@@ -9,6 +9,7 @@ Loading order (later overrides earlier):
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -19,6 +20,12 @@ from dotenv import load_dotenv
 
 # Load .env into os.environ (doesn't overwrite existing env vars)
 load_dotenv(override=False)
+
+# Support injecting all secrets as a single JSON env var (ECS full-secret injection)
+_SECRETS: dict = json.loads(os.environ.get("SECRETS_JSON", "{}"))
+
+def _secret(key: str) -> str:
+    return _SECRETS.get(key) or os.environ.get(key, "")
 
 _CONFIG_PATH = Path(__file__).parent.parent / "config" / "config.yaml"
 
@@ -167,18 +174,18 @@ def load_config(config_path: Path = _CONFIG_PATH) -> Config:
             level=str(logging_raw.get("level", "INFO")).upper(),
         ),
         secrets=SecretsConfig(
-            hyperliquid_api_key=os.environ.get("HYPERLIQUID_WALLET_ADDRESS", ""),
-            hyperliquid_api_secret=os.environ.get("HYPERLIQUID_PRIVATE_KEY", ""),
-            hyperliquid_builder_code=os.environ.get("HYPERLIQUID_BUILDER_CODE", ""),
-            hibachi_api_key=os.environ.get("HIBACHI_API_KEY", ""),
-            hibachi_account_id=os.environ.get("HIBACHI_ACCOUNT_ID", ""),
-            hibachi_private_key=os.environ.get("HIBACHI_PRIVATE_KEY", ""),
-            tradexyz_api_key=os.environ.get("HYPERLIQUID_WALLET_ADDRESS", ""),
-            tradexyz_api_secret=os.environ.get("HYPERLIQUID_PRIVATE_KEY", ""),
-            tradexyz_builder_code=os.environ.get("TRADEXYZ_BUILDER_CODE", ""),
-            dreamcash_api_key=os.environ.get("HYPERLIQUID_WALLET_ADDRESS", ""),
-            dreamcash_api_secret=os.environ.get("HYPERLIQUID_PRIVATE_KEY", ""),
-            dreamcash_builder_code=os.environ.get("DREAMCASH_BUILDER_CODE", ""),
+            hyperliquid_api_key=_secret("HYPERLIQUID_WALLET_ADDRESS"),
+            hyperliquid_api_secret=_secret("HYPERLIQUID_PRIVATE_KEY"),
+            hyperliquid_builder_code=_secret("HYPERLIQUID_BUILDER_CODE"),
+            hibachi_api_key=_secret("HIBACHI_API_KEY"),
+            hibachi_account_id=_secret("HIBACHI_ACCOUNT_ID"),
+            hibachi_private_key=_secret("HIBACHI_PRIVATE_KEY"),
+            tradexyz_api_key=_secret("HYPERLIQUID_WALLET_ADDRESS"),
+            tradexyz_api_secret=_secret("HYPERLIQUID_PRIVATE_KEY"),
+            tradexyz_builder_code=_secret("TRADEXYZ_BUILDER_CODE"),
+            dreamcash_api_key=_secret("HYPERLIQUID_WALLET_ADDRESS"),
+            dreamcash_api_secret=_secret("HYPERLIQUID_PRIVATE_KEY"),
+            dreamcash_builder_code=_secret("DREAMCASH_BUILDER_CODE"),
         ),
     )
 
