@@ -4,11 +4,11 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "256",
   "memory": "512",
-  "executionRoleArn": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/ecsTaskExecutionRole",
+  "executionRoleArn": "arn:aws:iam::273221486440:role/ecsTaskExecutionRole",
   "containerDefinitions": [
     {
       "name": "airdrop-bot",
-      "image": "<YOUR_ACCOUNT_ID>.dkr.ecr.ap-southeast-1.amazonaws.com/airdrop-trading-bot:latest",
+      "image": "273221486440.dkr.ecr.ap-southeast-1.amazonaws.com/airdrop-trading-bot:latest",
       "essential": true,
       "portMappings": [
         {
@@ -19,51 +19,51 @@
       "secrets": [
         {
           "name": "HYPERLIQUID_WALLET_ADDRESS",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:HYPERLIQUID_WALLET_ADDRESS::"
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:273221486440:secret:airdrop-bot-secrets-pcdMco:HYPERLIQUID_WALLET_ADDRESS::"
         },
         {
           "name": "HYPERLIQUID_PRIVATE_KEY",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:HYPERLIQUID_PRIVATE_KEY::"
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:273221486440:secret:airdrop-bot-secrets-pcdMco:HYPERLIQUID_PRIVATE_KEY::"
         },
         {
           "name": "HYPERLIQUID_BUILDER_CODE",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:HYPERLIQUID_BUILDER_CODE::"
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:273221486440:secret:airdrop-bot-secrets-pcdMco:HYPERLIQUID_BUILDER_CODE::"
         },
         {
           "name": "TRADEXYZ_WALLET_ADDRESS",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:TRADEXYZ_WALLET_ADDRESS::"
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:273221486440:secret:airdrop-bot-secrets-pcdMco:TRADEXYZ_WALLET_ADDRESS::"
         },
         {
           "name": "TRADEXYZ_PRIVATE_KEY",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:TRADEXYZ_PRIVATE_KEY::"
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:273221486440:secret:airdrop-bot-secrets-pcdMco:TRADEXYZ_PRIVATE_KEY::"
         },
         {
           "name": "TRADEXYZ_BUILDER_CODE",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:TRADEXYZ_BUILDER_CODE::"
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:273221486440:secret:airdrop-bot-secrets-pcdMco:TRADEXYZ_BUILDER_CODE::"
         },
         {
           "name": "DREAMCASH_WALLET_ADDRESS",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:DREAMCASH_WALLET_ADDRESS::"
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:273221486440:secret:airdrop-bot-secrets-pcdMco:DREAMCASH_WALLET_ADDRESS::"
         },
         {
           "name": "DREAMCASH_PRIVATE_KEY",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:DREAMCASH_PRIVATE_KEY::"
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:273221486440:secret:airdrop-bot-secrets-pcdMco:DREAMCASH_PRIVATE_KEY::"
         },
         {
           "name": "DREAMCASH_BUILDER_CODE",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:DREAMCASH_BUILDER_CODE::"
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:273221486440:secret:airdrop-bot-secrets-pcdMco:DREAMCASH_BUILDER_CODE::"
         },
         {
           "name": "HIBACHI_API_KEY",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:HIBACHI_API_KEY::"
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:273221486440:secret:airdrop-bot-secrets-pcdMco:HIBACHI_API_KEY::"
         },
         {
           "name": "HIBACHI_ACCOUNT_ID",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:HIBACHI_ACCOUNT_ID::"
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:273221486440:secret:airdrop-bot-secrets-pcdMco:HIBACHI_ACCOUNT_ID::"
         },
         {
           "name": "HIBACHI_PRIVATE_KEY",
-          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:HIBACHI_PRIVATE_KEY::"
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:273221486440:secret:airdrop-bot-secrets-pcdMco:HIBACHI_PRIVATE_KEY::"
         }
       ],
       "logConfiguration": {
