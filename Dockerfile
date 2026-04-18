@@ -18,4 +18,7 @@ RUN echo "3 * * * * root cd /app && python -m src.main >> /proc/1/fd/1 2>&1" \
     && chmod 0644 /etc/cron.d/trading-bot \
     && crontab /etc/cron.d/trading-bot
 
-CMD ["cron", "-f"]
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh
+
+CMD ["./entrypoint.sh"]
