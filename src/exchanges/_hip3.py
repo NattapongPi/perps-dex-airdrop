@@ -11,6 +11,7 @@ market validation, which rejects HIP-3 symbols not in the standard markets list)
 from __future__ import annotations
 
 import time
+from typing import Any
 
 import pandas as pd
 import requests
@@ -25,6 +26,58 @@ _INTERVAL_MS = {
     "4h": 14_400_000,
     "1d": 86_400_000,
 }
+
+
+def ensure_hip3_market(exchange: Any, symbol: str, dex_prefix: str) -> None:
+    """
+    Inject a synthetic market entry into a CCXT exchange's markets dict for a
+    HIP-3 symbol that isn't in the standard Hyperliquid markets list.
+
+    CCXT validates the symbol before placing orders, so we must register it.
+    baseId is set to the prefixed coin name (e.g. 'xyz:CL') because that's what
+    the Hyperliquid exchange API expects in the order payload.
+    """
+    if not exchange.markets:
+        exchange.load_markets()
+    if symbol in exchange.markets:
+        return
+    base = symbol.split("/")[0]
+    prefixed = f"{dex_prefix}:{base}"
+    exchange.markets[symbol] = {
+        "id": prefixed,
+        "symbol": symbol,
+        "base": base,
+        "quote": "USDC",
+        "settle": "USDC",
+        "baseId": prefixed,
+        "quoteId": "USDC",
+        "settleId": "USDC",
+        "type": "swap",
+        "spot": False,
+        "margin": False,
+        "swap": True,
+        "future": False,
+        "option": False,
+        "active": True,
+        "contract": True,
+        "linear": True,
+        "inverse": False,
+        "taker": 0.00035,
+        "maker": 0.0001,
+        "contractSize": 1,
+        "expiry": None,
+        "expiryDatetime": None,
+        "strike": None,
+        "optionType": None,
+        "precision": {"amount": 4, "price": 6},
+        "limits": {
+            "leverage": {"min": 1, "max": 50},
+            "amount": {"min": 1e-4, "max": None},
+            "price": {"min": None, "max": None},
+            "cost": {"min": None, "max": None},
+        },
+        "info": {"name": prefixed},
+    }
 
 
 def get_hip3_ohlcv(coin: str, timeframe: str, limit: int) -> pd.DataFrame:

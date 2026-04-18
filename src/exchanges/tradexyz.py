@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from src.exchanges._hip3 import get_hip3_ohlcv, get_hip3_top_coins
+from src.exchanges._hip3 import ensure_hip3_market, get_hip3_ohlcv, get_hip3_top_coins
 from src.exchanges.ccxt_base import CcxtAdapter
 from src.exchanges.hyperliquid import HyperliquidAdapter
 
@@ -55,3 +55,7 @@ class TradeXYZAdapter(HyperliquidAdapter):
     def get_ohlcv(self, symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
         base = symbol.split("/")[0]  # "CL" from "CL/USDC:USDC"
         return get_hip3_ohlcv(f"xyz:{base}", timeframe, limit)
+
+    def place_order(self, symbol: str, side: str, size: float, tp_pct: float, sl_pct: float):
+        ensure_hip3_market(self._exchange, symbol, "xyz")
+        return super().place_order(symbol, side, size, tp_pct, sl_pct)
