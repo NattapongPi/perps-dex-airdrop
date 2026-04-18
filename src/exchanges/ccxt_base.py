@@ -165,12 +165,17 @@ class CcxtAdapter(ExchangeAdapter, ABC):
         # mid price so CCXT can compute the IOC slippage price without fetching the
         # ticker (which fails for synthetic markets not in the standard markets list).
         price_hint = self._get_market_price(symbol)
+        # When we supply the mid price, also pass slippage so CCXT can compute the
+        # IOC limit price correctly (price * (1 ± slippage)).  Without slippage in
+        # params, CCXT's Precise.string_add('1', None) → None → ConversionSyntax.
+        order_params = {"slippage": "0.05"} if price_hint is not None else {}
         entry_order = self._exchange.create_order(
             symbol=symbol,
             type="market",
             side=side,
             amount=size,
             price=price_hint,
+            params=order_params,
         )
 
         entry_price = float(
