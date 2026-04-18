@@ -72,23 +72,32 @@ class TestTradeXYZGetTopCoins:
 
 
 class TestTradeXYZGetOhlcv:
+    def _fake_df(self, rows):
+        import pandas as pd
+        data = [{"t": r[0], "o": r[1], "h": r[2], "l": r[3], "c": r[4], "v": r[5]} for r in rows]
+        df = pd.DataFrame(data)
+        df.index = pd.to_datetime(df["t"], unit="ms", utc=True)
+        df = df.rename(columns={"o": "open", "h": "high", "l": "low", "c": "close", "v": "volume"})
+        return df[["open", "high", "low", "close", "volume"]].astype(float).sort_index()
+
     def test_returns_correct_dataframe(self, adapter):
-        adp, mock_ex = adapter
-        mock_ex.fetch_ohlcv.return_value = [
+        adp, _ = adapter
+        fake = self._fake_df([
             [1_700_000_000_000, 100.0, 105.0, 98.0, 102.0, 500.0],
             [1_700_003_600_000, 102.0, 107.0, 101.0, 106.0, 600.0],
-        ]
-        df = adp.get_ohlcv("BTC:USDC", "1h", 2)
+        ])
+        with patch("src.exchanges.tradexyz.get_hip3_ohlcv", return_value=fake) as mock_ohlcv:
+            df = adp.get_ohlcv("CL/USDC:USDC", "1h", 2)
+        mock_ohlcv.assert_called_once_with("xyz:CL", "1h", 2)
         assert list(df.columns) == ["open", "high", "low", "close", "volume"]
         assert len(df) == 2
         assert df["close"].iloc[-1] == 106.0
 
     def test_index_is_datetime(self, adapter):
-        adp, mock_ex = adapter
-        mock_ex.fetch_ohlcv.return_value = [
-            [1_700_000_000_000, 100.0, 105.0, 98.0, 102.0, 500.0],
-        ]
-        df = adp.get_ohlcv("BTC:USDC", "1h", 1)
+        adp, _ = adapter
+        fake = self._fake_df([[1_700_000_000_000, 100.0, 105.0, 98.0, 102.0, 500.0]])
+        with patch("src.exchanges.tradexyz.get_hip3_ohlcv", return_value=fake):
+            df = adp.get_ohlcv("CL/USDC:USDC", "1h", 1)
         assert isinstance(df.index, pd.DatetimeIndex)
 
 
