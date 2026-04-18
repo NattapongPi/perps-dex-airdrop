@@ -13,7 +13,7 @@ COPY . .
 
 EXPOSE 8080
 
-RUN echo "3 * * * * root cd /app && python -m src.main >> /proc/1/fd/1 2>&1" \
+RUN echo "3 * * * * root cd /app && python3 -m src.main >> /proc/1/fd/1 2>&1" \
     > /etc/cron.d/trading-bot \
     && chmod 0644 /etc/cron.d/trading-bot \
     && crontab /etc/cron.d/trading-bot
