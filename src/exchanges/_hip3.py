@@ -29,14 +29,16 @@ _INTERVAL_MS = {
 
 
 def get_hip3_mid_price(coin: str) -> float:
-    """Return the current mid price for a HIP-3 coin (e.g. 'xyz:CL') from allMids."""
-    resp = requests.post(_HL_INFO_URL, json={"type": "allMids"}, timeout=10)
+    """Return the current mid price for a HIP-3 coin (e.g. 'xyz:CL') via l2Book."""
+    resp = requests.post(_HL_INFO_URL, json={"type": "l2Book", "coin": coin}, timeout=10)
     resp.raise_for_status()
-    mids: dict[str, str] = resp.json()
-    price_str = mids.get(coin)
-    if not price_str:
-        raise ValueError(f"No mid price found for {coin!r} in allMids response")
-    return float(price_str)
+    data = resp.json()
+    levels = data.get("levels", [])
+    if len(levels) < 2 or not levels[0] or not levels[1]:
+        raise ValueError(f"Empty order book for {coin!r}")
+    best_bid = float(levels[0][0]["px"])
+    best_ask = float(levels[1][0]["px"])
+    return (best_bid + best_ask) / 2
 
 
 def ensure_hip3_market(exchange: Any, symbol: str, dex_prefix: str, quote: str = "USDC") -> None:
