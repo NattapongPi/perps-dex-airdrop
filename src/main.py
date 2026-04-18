@@ -146,6 +146,17 @@ def _run_exchange(
             )
             continue
 
+        logger.info(
+            "Placing order",
+            extra={
+                "exchange": exchange_name,
+                "symbol": symbol,
+                "size": size,
+                "entry_price": entry_price,
+                "sl_pct": round(sl_pct, 6),
+                "tp_pct": round(tp_pct, 6),
+            },
+        )
         try:
             result = exchange.place_order(
                 symbol=symbol,
@@ -155,7 +166,11 @@ def _run_exchange(
                 sl_pct=sl_pct,
             )
         except Exception as exc:
-            logger.error("Order placement failed", extra={"exchange": exchange_name, "symbol": symbol, "error": str(exc)})
+            logger.error(
+                "Order placement failed",
+                extra={"exchange": exchange_name, "symbol": symbol, "error": str(exc)},
+                exc_info=True,
+            )
             continue
 
         orders_placed += 1
