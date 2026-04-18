@@ -1,6 +1,7 @@
 # AWS credentials — never commit
 *accessKeys.csv
 *.csv
+task-definition.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
