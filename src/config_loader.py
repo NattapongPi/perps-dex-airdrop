@@ -188,8 +188,8 @@ def load_config(config_path: Path = _CONFIG_PATH) -> Config:
 
 _REQUIRED_SECRETS: dict[str, list[str]] = {
     "hyperliquid": ["hyperliquid_api_key", "hyperliquid_api_secret"],
-    "tradexyz":    ["tradexyz_api_key", "tradexyz_api_secret"],
-    "dreamcash":   ["dreamcash_api_key", "dreamcash_api_secret"],
+    "tradexyz":    [],  # shares Hyperliquid wallet — adapter fails at connect if missing
+    "dreamcash":   [],  # shares Hyperliquid wallet — adapter fails at connect if missing
     "hibachi":     ["hibachi_api_key", "hibachi_account_id", "hibachi_private_key"],
 }
 
