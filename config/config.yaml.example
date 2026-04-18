@@ -1,0 +1,24 @@
+# Active exchange — can also be set via EXCHANGE env var (env takes precedence)
+exchange: hyperliquid
+
+scan:
+  top_n: 5           # scan top N coins by OI (Hibachi: by volume) each run
+  timeframe: "1h"    # candle timeframe
+  ohlcv_limit: 100   # number of candles to fetch per symbol
+
+strategy:
+  type: ema_trend_filter
+  ema_fast: 12       # fast EMA period
+  ema_slow: 26       # slow EMA period
+
+risk:
+  risk_pct: 1.0           # % of account balance risked per trade (1.0 = 1%)
+  atr_period: 14          # ATR lookback period
+  atr_sl_multiplier: 1.5  # SL = entry - (ATR * this)
+  atr_tp_multiplier: 2.0  # TP = entry + (ATR * this)
+
+position:
+  max_concurrent: 10 # never open more than this many positions simultaneously
+
+logging:
+  level: INFO        # DEBUG | INFO | WARNING | ERROR

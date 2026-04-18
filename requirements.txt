@@ -1,0 +1,11 @@
+pandas>=2.0
+numpy>=1.26
+PyYAML>=6.0
+python-dotenv>=1.0
+python-json-logger>=2.0
+requests>=2.31
+ccxt>=4.0
+flask>=3.0
+pytest>=8.0
+mypy>=1.10
+ruff>=0.4

@@ -1,0 +1,89 @@
+{
+  "family": "airdrop-trading-bot",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "airdrop-bot",
+      "image": "<YOUR_ACCOUNT_ID>.dkr.ecr.ap-southeast-1.amazonaws.com/airdrop-trading-bot:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "HYPERLIQUID_WALLET_ADDRESS",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:HYPERLIQUID_WALLET_ADDRESS::"
+        },
+        {
+          "name": "HYPERLIQUID_PRIVATE_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:HYPERLIQUID_PRIVATE_KEY::"
+        },
+        {
+          "name": "HYPERLIQUID_BUILDER_CODE",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:HYPERLIQUID_BUILDER_CODE::"
+        },
+        {
+          "name": "TRADEXYZ_WALLET_ADDRESS",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:TRADEXYZ_WALLET_ADDRESS::"
+        },
+        {
+          "name": "TRADEXYZ_PRIVATE_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:TRADEXYZ_PRIVATE_KEY::"
+        },
+        {
+          "name": "TRADEXYZ_BUILDER_CODE",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:TRADEXYZ_BUILDER_CODE::"
+        },
+        {
+          "name": "DREAMCASH_WALLET_ADDRESS",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:DREAMCASH_WALLET_ADDRESS::"
+        },
+        {
+          "name": "DREAMCASH_PRIVATE_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:DREAMCASH_PRIVATE_KEY::"
+        },
+        {
+          "name": "DREAMCASH_BUILDER_CODE",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:DREAMCASH_BUILDER_CODE::"
+        },
+        {
+          "name": "HIBACHI_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:HIBACHI_API_KEY::"
+        },
+        {
+          "name": "HIBACHI_ACCOUNT_ID",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:HIBACHI_ACCOUNT_ID::"
+        },
+        {
+          "name": "HIBACHI_PRIVATE_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-1:<YOUR_ACCOUNT_ID>:secret:airdrop-bot-secrets:HIBACHI_PRIVATE_KEY::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/airdrop-trading-bot",
+          "awslogs-region": "ap-southeast-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:8080/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 10,
+        "retries": 3,
+        "startPeriod": 15
+      }
+    }
+  ]
+}
