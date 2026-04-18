@@ -24,6 +24,9 @@ load_dotenv(override=False)
 # Support injecting all secrets as a single JSON env var (ECS full-secret injection)
 _SECRETS: dict = json.loads(os.environ.get("SECRETS_JSON", "{}"))
 
+_DEBUG_KEYS = ["HIBACHI_API_KEY", "HYPERLIQUID_WALLET_ADDRESS", "SECRETS_JSON"]
+print("ENV_DEBUG:", {k: ("PRESENT" if os.environ.get(k) else "ABSENT") for k in _DEBUG_KEYS})
+
 def _secret(key: str) -> str:
     return _SECRETS.get(key) or os.environ.get(key, "")
 
