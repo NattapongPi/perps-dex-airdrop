@@ -22,21 +22,23 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from src.exchanges._hip3 import get_hip3_top_coins
 from src.exchanges.ccxt_base import CcxtAdapter
 from src.exchanges.hyperliquid import HyperliquidAdapter
 
 if TYPE_CHECKING:
     from src.config_loader import Config
 
-# DreamCash official builder address — earns XP rewards for developers
+# Builder code for fee attribution (goes into CCXT broker option)
 _DREAMCASH_BUILDER = "0x4950994884602d1b6c6d96e4fe30f58205c39395"
+# Deployer address for HIP-3 market discovery (from perpDexs API — differs from builder)
+_DREAMCASH_DEPLOYER = "0xffa8198c62adb1e811629bd54c9b646d726deef7"
 
 
 class DreamCashAdapter(HyperliquidAdapter):
     """
     DreamCash adapter — inherits all Hyperliquid logic.
-    Calls CcxtAdapter.__init__ directly to supply DreamCash credentials.
-    Builder code defaults to the official DreamCash address if not overridden.
+    Overrides get_top_coins() to return only cash-tagged HIP-3 markets.
     """
 
     def __init__(self, config: "Config") -> None:
@@ -46,3 +48,6 @@ class DreamCashAdapter(HyperliquidAdapter):
             api_secret=config.secrets.dreamcash_api_secret,
             builder_code=config.secrets.dreamcash_builder_code or _DREAMCASH_BUILDER,
         )
+
+    def get_top_coins(self, n: int) -> list[str]:
+        return get_hip3_top_coins(_DREAMCASH_DEPLOYER, self.PERP_SUFFIX, n)

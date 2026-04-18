@@ -4,16 +4,16 @@
 exchanges:
   - hyperliquid:
       position:
-        max_concurrent: 10
+        max_concurrent: 5
   - tradexyz:
       position:
-        max_concurrent: 10
+        max_concurrent: 5
   - dreamcash:
       position:
-        max_concurrent: 10
+        max_concurrent: 5
   - hibachi:
       position:
-        max_concurrent: 10
+        max_concurrent: 5
 
 scan:
   top_n: 5
@@ -26,13 +26,13 @@ strategy:
   ema_slow: 26
 
 risk:
-  risk_pct: 0.5
+  risk_pct: 0.2
   atr_period: 14
   atr_sl_multiplier: 1.5
   atr_tp_multiplier: 2.0
 
 position:
-  max_concurrent: 10
+  max_concurrent: 5
 
 logging:
   level: INFO

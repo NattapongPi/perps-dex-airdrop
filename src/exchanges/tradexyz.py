@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from src.exchanges._hip3 import get_hip3_top_coins
 from src.exchanges.ccxt_base import CcxtAdapter
 from src.exchanges.hyperliquid import HyperliquidAdapter
 
@@ -28,14 +29,14 @@ if TYPE_CHECKING:
     from src.config_loader import Config
 
 _XYZ_BUILDER = "0x88806a71D74ad0a510b350545C9aE490912F0888"
+# Deployer == builder for TradeXYZ
+_XYZ_DEPLOYER = _XYZ_BUILDER
 
 
 class TradeXYZAdapter(HyperliquidAdapter):
     """
     TradeXYZ adapter — inherits all Hyperliquid logic.
-    Calls CcxtAdapter.__init__ directly to supply TradeXYZ credentials
-    instead of Hyperliquid credentials.
-    Builder address is public and hardcoded; override via TRADEXYZ_BUILDER_CODE if needed.
+    Overrides get_top_coins() to return only xyz-tagged HIP-3 markets.
     """
 
     def __init__(self, config: "Config") -> None:
@@ -45,3 +46,6 @@ class TradeXYZAdapter(HyperliquidAdapter):
             api_secret=config.secrets.tradexyz_api_secret,
             builder_code=config.secrets.tradexyz_builder_code or _XYZ_BUILDER,
         )
+
+    def get_top_coins(self, n: int) -> list[str]:
+        return get_hip3_top_coins(_XYZ_DEPLOYER, self.PERP_SUFFIX, n)
