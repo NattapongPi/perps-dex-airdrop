@@ -2,9 +2,6 @@
 # Each entry can be just the name (uses global params below)
 # or a dict with override blocks for strategy / risk / position.
 exchanges:
-  - hyperliquid:
-      position:
-        max_concurrent: 5
   - tradexyz:
       position:
         max_concurrent: 5
