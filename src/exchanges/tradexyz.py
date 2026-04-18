@@ -21,7 +21,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from src.exchanges._hip3 import get_hip3_top_coins
+import pandas as pd
+
+from src.exchanges._hip3 import get_hip3_ohlcv, get_hip3_top_coins
 from src.exchanges.ccxt_base import CcxtAdapter
 from src.exchanges.hyperliquid import HyperliquidAdapter
 
@@ -49,3 +51,7 @@ class TradeXYZAdapter(HyperliquidAdapter):
 
     def get_top_coins(self, n: int) -> list[str]:
         return get_hip3_top_coins(_XYZ_DEPLOYER, self.PERP_SUFFIX, n)
+
+    def get_ohlcv(self, symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
+        base = symbol.split("/")[0]  # "CL" from "CL/USDC:USDC"
+        return get_hip3_ohlcv(f"xyz:{base}", timeframe, limit)

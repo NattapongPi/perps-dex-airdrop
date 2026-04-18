@@ -14,12 +14,10 @@ Run on a schedule inside the container:
 from __future__ import annotations
 
 import sys
-import threading
 from dataclasses import asdict
 
 from src.config_loader import load_config
 from src.exchanges import get_adapter  # used in run() to build adapter dict
-from src.health import start_health_server
 from src.logging_config import get_logger, setup_logging
 from src.risk.sizing import (
     calculate_position_size,
@@ -203,12 +201,6 @@ def run() -> None:
     )
 
     exchanges = {name: get_adapter(name, config) for name in config.exchanges}
-    threading.Thread(
-        target=start_health_server,
-        args=(exchanges,),
-        daemon=True,
-        name="health-server",
-    ).start()
 
     total_orders = 0
     for exchange_name, adapter in exchanges.items():
