@@ -28,6 +28,17 @@ _INTERVAL_MS = {
 }
 
 
+def get_hip3_mid_price(coin: str) -> float:
+    """Return the current mid price for a HIP-3 coin (e.g. 'xyz:CL') from allMids."""
+    resp = requests.post(_HL_INFO_URL, json={"type": "allMids"}, timeout=10)
+    resp.raise_for_status()
+    mids: dict[str, str] = resp.json()
+    price_str = mids.get(coin)
+    if not price_str:
+        raise ValueError(f"No mid price found for {coin!r} in allMids response")
+    return float(price_str)
+
+
 def ensure_hip3_market(exchange: Any, symbol: str, dex_prefix: str, quote: str = "USDC") -> None:
     """
     Inject a synthetic market entry into a CCXT exchange's markets dict for a

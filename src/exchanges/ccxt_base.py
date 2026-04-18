@@ -72,6 +72,15 @@ class CcxtAdapter(ExchangeAdapter, ABC):
             self._exchange.options["broker"] = builder_code
             self._exchange.options["builderFee"] = False
 
+    def _get_market_price(self, symbol: str) -> float | None:
+        """Return current mid price for market order slippage calculation.
+
+        Override in subclasses whose markets aren't in the CCXT markets list
+        (e.g. HIP-3 adapters), otherwise CCXT will fail trying to fetch the ticker.
+        Returns None for standard exchanges where CCXT fetches the price itself.
+        """
+        return None
+
     # ------------------------------------------------------------------
     # ExchangeAdapter interface — full implementations
     # ------------------------------------------------------------------
@@ -152,11 +161,16 @@ class CcxtAdapter(ExchangeAdapter, ABC):
         close_side = "sell" if is_buy else "buy"
 
         # --- 1. Market entry ---
+        # price_hint allows subclasses (e.g. HIP-3 adapters) to supply the current
+        # mid price so CCXT can compute the IOC slippage price without fetching the
+        # ticker (which fails for synthetic markets not in the standard markets list).
+        price_hint = self._get_market_price(symbol)
         entry_order = self._exchange.create_order(
             symbol=symbol,
             type="market",
             side=side,
             amount=size,
+            price=price_hint,
         )
 
         entry_price = float(

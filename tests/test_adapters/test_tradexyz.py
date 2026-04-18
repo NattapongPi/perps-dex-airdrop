@@ -147,7 +147,8 @@ class TestTradeXYZPlaceOrder:
             "average": 30000.0,
             "status": "closed",
         }
-        result = adp.place_order("BTC:USDC", "buy", 0.01, 0.04, 0.02)
+        with patch("src.exchanges.tradexyz.get_hip3_mid_price", return_value=30000.0):
+            result = adp.place_order("CL/USDC:USDC", "buy", 0.01, 0.04, 0.02)
         assert result.order_id == "12345"
         assert result.entry_price == 30000.0
         assert result.tp_price == pytest.approx(30000.0 * 1.04)
@@ -158,7 +159,8 @@ class TestTradeXYZPlaceOrder:
         mock_ex.create_order.return_value = {
             "id": "1", "average": 30000.0, "status": "closed"
         }
-        adp.place_order("BTC:USDC", "buy", 0.01, 0.04, 0.02)
+        with patch("src.exchanges.tradexyz.get_hip3_mid_price", return_value=30000.0):
+            adp.place_order("CL/USDC:USDC", "buy", 0.01, 0.04, 0.02)
         assert mock_ex.create_order.call_count == 3
 
 
