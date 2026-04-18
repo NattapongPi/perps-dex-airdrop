@@ -28,11 +28,25 @@ _INTERVAL_MS = {
 }
 
 
-def get_hip3_mid_price(coin: str) -> float:
-    """Return the current mid price for a HIP-3 coin (e.g. 'xyz:CL') via l2Book."""
+def _fetch_l2book(coin: str) -> dict:
     resp = requests.post(_HL_INFO_URL, json={"type": "l2Book", "coin": coin}, timeout=10)
     resp.raise_for_status()
-    data = resp.json()
+    return resp.json()
+
+
+def _infer_tick(values: list[str]) -> float:
+    """Infer minimum tick size from a sample of decimal strings (e.g. order book prices)."""
+    max_dp = 0
+    for v in values:
+        if "." in v:
+            dp = len(v.split(".")[1].rstrip("0") or "0")
+            max_dp = max(max_dp, dp)
+    return 10.0 ** (-max_dp) if max_dp > 0 else 1.0
+
+
+def get_hip3_mid_price(coin: str) -> float:
+    """Return the current mid price for a HIP-3 coin (e.g. 'xyz:CL') via l2Book."""
+    data = _fetch_l2book(coin)
     levels = data.get("levels", [])
     if len(levels) < 2 or not levels[0] or not levels[1]:
         raise ValueError(f"Empty order book for {coin!r}")
@@ -56,6 +70,20 @@ def ensure_hip3_market(exchange: Any, symbol: str, dex_prefix: str, quote: str =
         return
     base = symbol.split("/")[0]
     prefixed = f"{dex_prefix}:{base}"
+
+    # Dynamically infer tick sizes from the live order book.
+    amount_tick = 0.01
+    price_tick = 0.01
+    try:
+        data = _fetch_l2book(prefixed)
+        levels = data.get("levels", [])
+        entries = (levels[0] if levels else []) + (levels[1] if len(levels) > 1 else [])
+        if entries:
+            amount_tick = _infer_tick([e["sz"] for e in entries])
+            price_tick = _infer_tick([e["px"] for e in entries])
+    except Exception:
+        pass  # fall back to defaults
+
     exchange.markets[symbol] = {
         "id": prefixed,
         "symbol": symbol,
@@ -82,10 +110,10 @@ def ensure_hip3_market(exchange: Any, symbol: str, dex_prefix: str, quote: str =
         "expiryDatetime": None,
         "strike": None,
         "optionType": None,
-        "precision": {"amount": 4, "price": 6},
+        "precision": {"amount": amount_tick, "price": price_tick, "cost": None, "base": None, "quote": None},
         "limits": {
             "leverage": {"min": 1, "max": 50},
-            "amount": {"min": 1e-4, "max": None},
+            "amount": {"min": amount_tick, "max": None},
             "price": {"min": None, "max": None},
             "cost": {"min": None, "max": None},
         },
