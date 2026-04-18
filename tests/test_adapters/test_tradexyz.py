@@ -53,33 +53,21 @@ class TestTradeXYZAdapterInterface:
 
 
 class TestTradeXYZGetTopCoins:
-    def test_returns_top_n_by_volume(self, adapter):
-        adp, mock_ex = adapter
-        mock_ex.fetch_tickers.return_value = {
-            "BTC:USDC": {"quoteVolume": 1_000_000},
-            "ETH:USDC": {"quoteVolume": 500_000},
-            "SOL:USDC": {"quoteVolume": 200_000},
-        }
-        result = adp.get_top_coins(2)
-        assert result == ["BTC:USDC", "ETH:USDC"]
-
-    def test_filters_non_perp(self, adapter):
-        adp, mock_ex = adapter
-        mock_ex.fetch_tickers.return_value = {
-            "BTC:USDC": {"quoteVolume": 1_000_000},
-            "BTC/USDC": {"quoteVolume": 9_000_000},
-        }
-        result = adp.get_top_coins(5)
-        assert "BTC/USDC" not in result
-        assert "BTC:USDC" in result
+    def test_returns_hip3_coins(self, adapter):
+        adp, _ = adapter
+        hip3_symbols = ["NVDA/USDC:USDC", "TSLA/USDC:USDC", "GOLD/USDC:USDC"]
+        with patch("src.exchanges.tradexyz.get_hip3_top_coins", return_value=hip3_symbols) as mock_hip3:
+            result = adp.get_top_coins(3)
+        assert result == hip3_symbols
+        mock_hip3.assert_called_once_with(
+            "0x88806a71D74ad0a510b350545C9aE490912F0888", ":USDC", 3
+        )
 
     def test_returns_at_most_n(self, adapter):
-        adp, mock_ex = adapter
-        mock_ex.fetch_tickers.return_value = {
-            f"COIN{i}:USDC": {"quoteVolume": i * 1000}
-            for i in range(10)
-        }
-        result = adp.get_top_coins(3)
+        adp, _ = adapter
+        all_symbols = [f"ASSET{i}/USDC:USDC" for i in range(10)]
+        with patch("src.exchanges.tradexyz.get_hip3_top_coins", return_value=all_symbols[:3]):
+            result = adp.get_top_coins(3)
         assert len(result) == 3
 
 
