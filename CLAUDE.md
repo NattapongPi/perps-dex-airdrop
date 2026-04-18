@@ -43,7 +43,7 @@ All 3 exchanges share the same Hyperliquid wallet (user uses one account for all
 - **ECS Fargate** — ap-southeast-1 (Singapore)
 - **Account**: `<AWS_ACCOUNT_ID>`
 - **ECR repo**: `<AWS_ACCOUNT_ID>.dkr.ecr.ap-southeast-1.amazonaws.com/airdrop-bot`
-- **ECS cluster**: `airdrop-bot-cluster`, service: `airdrop-bot-service`
+- **ECS cluster**: `trading-bots`, service: `airdrop-bot`
 - **Secrets Manager ARN**: `arn:aws:secretsmanager:ap-southeast-1:<AWS_ACCOUNT_ID>:secret:airdrop-bot-secrets-<SUFFIX>`
 - **Schedule**: cron runs every hour at minute 3 (`3 * * * *`) inside the container
 - **Health server**: persistent Flask on port 8080 (ECS health check target)
