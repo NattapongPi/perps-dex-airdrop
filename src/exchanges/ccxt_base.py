@@ -218,7 +218,7 @@ class CcxtAdapter(ExchangeAdapter, ABC):
             type="stop_market",
             side=close_side,
             amount=size,
-            price=None,
+            price=sl_price,
             params={
                 "reduceOnly": True,
                 "stopPrice": sl_price,
