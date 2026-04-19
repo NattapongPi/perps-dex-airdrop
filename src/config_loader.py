@@ -18,8 +18,9 @@ from typing import Any
 import yaml
 from dotenv import load_dotenv
 
-# Load .env into os.environ (doesn't overwrite existing env vars)
+# Load .env first, then .env.local overrides (local file is gitignored)
 load_dotenv(override=False)
+load_dotenv(".env.local", override=True)
 
 # Support injecting all secrets as a single JSON env var (ECS full-secret injection)
 _SECRETS: dict = json.loads(os.environ.get("SECRETS_JSON", "{}"))
