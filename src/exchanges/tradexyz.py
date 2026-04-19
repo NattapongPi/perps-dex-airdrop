@@ -44,6 +44,8 @@ _XYZ_SYMBOL_PREFIX = "XYZ-"
 
 
 class TradeXYZAdapter(HyperliquidAdapter):
+    # Required so fetch_positions queries the XYZ DEX clearinghouse, not standard HL
+    POSITIONS_DEX = "xyz"
     """
     TradeXYZ adapter — inherits all Hyperliquid logic.
     Overrides get_top_coins(), get_ohlcv(), and _get_market_price() for HIP-3.

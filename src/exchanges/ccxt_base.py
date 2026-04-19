@@ -38,6 +38,9 @@ class CcxtAdapter(ExchangeAdapter, ABC):
     CCXT_ID: str
     QUOTE_CURRENCY: str
     PERP_SUFFIX: str
+    # HIP-3 subclasses set this to scope fetch_positions to their DEX clearinghouse.
+    # Without it, Hyperliquid only returns standard perp positions (HIP-3 are invisible).
+    POSITIONS_DEX: str | None = None
 
     def __init__(
         self,
@@ -119,8 +122,11 @@ class CcxtAdapter(ExchangeAdapter, ABC):
         """
         Fetch all open positions via CCXT fetch_positions.
         Filters out zero-size entries.
+        HIP-3 adapters set POSITIONS_DEX so the correct DEX clearinghouse is queried
+        (without it Hyperliquid only returns standard perp positions).
         """
-        raw_positions = self._exchange.fetch_positions()
+        params = {"dex": self.POSITIONS_DEX} if self.POSITIONS_DEX else {}
+        raw_positions = self._exchange.fetch_positions(params=params)
         positions = []
         for p in raw_positions:
             size = abs(float(p.get("contracts") or 0))

@@ -65,6 +65,8 @@ class DreamCashAdapter(HyperliquidAdapter):
     QUOTE_CURRENCY = "USDT"
     # PERP_SUFFIX is used only if the base get_top_coins() were called — we override it
     PERP_SUFFIX = _CASH_PERP_SUFFIX
+    # Required so fetch_positions queries the CASH DEX clearinghouse, not standard HL
+    POSITIONS_DEX = "cash"
 
     def __init__(self, config: "Config") -> None:
         CcxtAdapter.__init__(
