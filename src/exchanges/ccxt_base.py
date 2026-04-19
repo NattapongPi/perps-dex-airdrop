@@ -66,7 +66,7 @@ class CcxtAdapter(ExchangeAdapter, ABC):
 
         # Allow market orders without an explicit price (CCXT Hyperliquid converts
         # them to IOC limit orders using last_price ± slippage%).
-        self._exchange.options["defaultSlippage"] = 0.05
+        self._exchange.options["defaultSlippage"] = 0.01
 
         # Set builder code once — CCXT attaches it to every order.
         # builderFee=False means we supply our own address rather than using
@@ -174,7 +174,7 @@ class CcxtAdapter(ExchangeAdapter, ABC):
         # When we supply the mid price, also pass slippage so CCXT can compute the
         # IOC limit price correctly (price * (1 ± slippage)).  Without slippage in
         # params, CCXT's Precise.string_add('1', None) → None → ConversionSyntax.
-        order_params = {"slippage": "0.05"} if price_hint is not None else {}
+        order_params = {"slippage": "0.01"} if price_hint is not None else {}
         entry_order = self._exchange.create_order(
             symbol=symbol,
             type="market",
