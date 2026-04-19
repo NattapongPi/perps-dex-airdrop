@@ -90,3 +90,12 @@ class DreamCashAdapter(HyperliquidAdapter):
     def _get_market_price(self, symbol: str) -> float:
         base = symbol.split("/")[0].split("-", 1)[-1]
         return get_hip3_mid_price(f"cash:{base}")
+
+    def place_order(self, symbol: str, side: str, size: float, tp_pct: float, sl_pct: float):
+        # CASH HIP-3 assets only support isolated margin (cross is rejected by Hyperliquid).
+        # Set isolated leverage capped at 10x before entry — ATR-based SL limits real risk.
+        market = self._exchange.market(symbol)
+        max_lev = int((market.get("limits") or {}).get("leverage", {}).get("max") or 1)
+        leverage = min(max_lev, 10)
+        self._exchange.set_leverage(leverage, symbol, params={"marginMode": "isolated"})
+        return super().place_order(symbol, side, size, tp_pct, sl_pct)
