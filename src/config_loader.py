@@ -100,6 +100,7 @@ class Config:
     position: PositionConfig
     logging: LoggingConfig
     secrets: SecretsConfig
+    dry_run: bool = False  # Set DRY_RUN=true in .env to log orders without placing them
 
 
 # ---------------------------------------------------------------------------
@@ -151,9 +152,12 @@ def load_config(config_path: Path = _CONFIG_PATH) -> Config:
     position_raw = raw.get("position", {})
     logging_raw = raw.get("logging", {})
 
+    dry_run = os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes") or bool(raw.get("dry_run", False))
+
     config = Config(
         exchanges=parsed_exchanges,
         per_exchange=per_exchange,
+        dry_run=dry_run,
         scan=ScanConfig(
             top_n=int(scan_raw.get("top_n", 20)),
             timeframe=str(scan_raw.get("timeframe", "1h")),

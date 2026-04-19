@@ -146,17 +146,24 @@ def _run_exchange(
             )
             continue
 
-        logger.info(
-            "Placing order",
-            extra={
-                "exchange": exchange_name,
-                "symbol": symbol,
-                "size": size,
-                "entry_price": entry_price,
-                "sl_pct": round(sl_pct, 6),
-                "tp_pct": round(tp_pct, 6),
-            },
-        )
+        order_extra = {
+            "exchange": exchange_name,
+            "symbol": symbol,
+            "size": round(size, 6),
+            "entry_price": entry_price,
+            "sl_price": round(sl_price, 6),
+            "tp_price": round(tp_price, 6),
+            "sl_pct": round(sl_pct * 100, 3),
+            "tp_pct": round(tp_pct * 100, 3),
+            "atr_value": round(atr_value, 6),
+        }
+
+        if config.dry_run:
+            logger.info("DRY RUN — order skipped", extra=order_extra)
+            orders_placed += 1
+            open_symbols.add(symbol)
+            continue
+
         try:
             result = exchange.place_order(
                 symbol=symbol,
@@ -175,22 +182,7 @@ def _run_exchange(
 
         orders_placed += 1
         open_symbols.add(symbol)
-        logger.info(
-            "Order placed",
-            extra={
-                "exchange": exchange_name,
-                "symbol": symbol,
-                "order_id": result.order_id,
-                "size": round(size, 6),
-                "entry_price": entry_price,
-                "sl_price": round(sl_price, 6),
-                "tp_price": round(tp_price, 6),
-                "sl_pct": round(sl_pct * 100, 3),
-                "tp_pct": round(tp_pct * 100, 3),
-                "atr_value": round(atr_value, 6),
-                "status": result.status,
-            },
-        )
+        logger.info("Order placed", extra={**order_extra, "order_id": result.order_id, "status": result.status})
 
     logger.info("Exchange scan complete", extra={"exchange": exchange_name, "orders_placed": orders_placed})
     return orders_placed
