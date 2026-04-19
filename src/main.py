@@ -92,7 +92,7 @@ def _run_exchange(
     max_concurrent = position_cfg["max_concurrent"]
 
     for symbol in top_coins:
-        if len(open_symbols) + orders_placed >= max_concurrent:
+        if len(open_symbols) >= max_concurrent:
             logger.info("Max concurrent positions reached, stopping scan", extra={"exchange": exchange_name})
             break
 
