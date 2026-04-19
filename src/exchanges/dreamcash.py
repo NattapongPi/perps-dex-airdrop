@@ -11,6 +11,12 @@ Source: https://www.dreamcash.xyz/build
 
 All trading logic is inherited from HyperliquidAdapter → CcxtAdapter.
 
+CCXT symbol format: "CASH-WTI/USDT0:USDT0"  (CCXT knows CASH-* markets natively
+                                               with correct integer baseId — no
+                                               synthetic market injection needed)
+API coin format:    "cash:WTI"               (used for OHLCV and price lookups)
+Balance currency:   "USDT"                   (fetch_balance returns "USDT" key)
+
 Auth fields in .env:
   DREAMCASH_WALLET_ADDRESS — 0x... wallet address
   DREAMCASH_PRIVATE_KEY    — 0x... private key for signing
@@ -24,7 +30,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from src.exchanges._hip3 import ensure_hip3_market, get_hip3_mid_price, get_hip3_ohlcv, get_hip3_top_coins
+from src.exchanges._hip3 import get_hip3_mid_price, get_hip3_ohlcv, get_hip3_top_coins
 from src.exchanges.ccxt_base import CcxtAdapter
 from src.exchanges.hyperliquid import HyperliquidAdapter
 
@@ -36,16 +42,29 @@ _DREAMCASH_BUILDER = "0x4950994884602d1b6c6d96e4fe30f58205c39395"
 # Deployer address for HIP-3 market discovery (from perpDexs API — differs from builder)
 _DREAMCASH_DEPLOYER = "0xffa8198c62adb1e811629bd54c9b646d726deef7"
 
+# CCXT-native symbol prefix and quote for CASH HIP-3 markets
+# e.g. "CASH-WTI/USDT0:USDT0" — note USDT0 in symbol, USDT in balance
+_CASH_SYMBOL_PREFIX = "CASH-"
+_CASH_SYMBOL_QUOTE = "USDT0"
+_CASH_PERP_SUFFIX = ":USDT0"
+
 
 class DreamCashAdapter(HyperliquidAdapter):
     """
     DreamCash adapter — inherits all Hyperliquid logic.
-    Overrides get_top_coins() to return only cash-tagged HIP-3 markets.
-    DreamCash settles in USDT (not USDC like standard Hyperliquid).
+    Overrides get_top_coins(), get_ohlcv(), and _get_market_price() for HIP-3.
+
+    CCXT knows DreamCash markets natively as "CASH-WTI/USDT0:USDT0" with correct
+    integer baseIds (e.g. 170012 for WTI), so no synthetic market injection is
+    needed and place_order() is inherited unchanged from CcxtAdapter.
+
+    Note: CCXT market symbols use "USDT0"; fetch_balance() returns "USDT".
     """
 
+    # QUOTE_CURRENCY is used by get_balance() — balance is returned as "USDT"
     QUOTE_CURRENCY = "USDT"
-    PERP_SUFFIX = ":USDT"
+    # PERP_SUFFIX is used only if the base get_top_coins() were called — we override it
+    PERP_SUFFIX = _CASH_PERP_SUFFIX
 
     def __init__(self, config: "Config") -> None:
         CcxtAdapter.__init__(
@@ -56,16 +75,16 @@ class DreamCashAdapter(HyperliquidAdapter):
         )
 
     def get_top_coins(self, n: int) -> list[str]:
-        return get_hip3_top_coins(_DREAMCASH_DEPLOYER, self.PERP_SUFFIX, n, quote=self.QUOTE_CURRENCY)
+        # Returns CCXT-native symbols, e.g. "CASH-WTI/USDT0:USDT0"
+        return get_hip3_top_coins(
+            _DREAMCASH_DEPLOYER, _CASH_PERP_SUFFIX, n, quote=_CASH_SYMBOL_QUOTE, symbol_prefix=_CASH_SYMBOL_PREFIX
+        )
 
     def get_ohlcv(self, symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
-        base = symbol.split("/")[0]  # "AMZN" from "AMZN/USDT:USDT"
+        # "CASH-WTI/USDT0:USDT0" → strip DEX prefix → "WTI" → API coin "cash:WTI"
+        base = symbol.split("/")[0].split("-", 1)[-1]
         return get_hip3_ohlcv(f"cash:{base}", timeframe, limit)
 
     def _get_market_price(self, symbol: str) -> float:
-        base = symbol.split("/")[0]
+        base = symbol.split("/")[0].split("-", 1)[-1]
         return get_hip3_mid_price(f"cash:{base}")
-
-    def place_order(self, symbol: str, side: str, size: float, tp_pct: float, sl_pct: float):
-        ensure_hip3_market(self._exchange, symbol, "cash", quote="USDT")
-        return super().place_order(symbol, side, size, tp_pct, sl_pct)

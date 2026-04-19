@@ -11,6 +11,11 @@ XYZ Protocol metadata (from docs.trade.xyz):
   Deployer:       0x88806a71D74ad0a510b350545C9aE490912F0888
   Oracle Updater: 0x1234567890545d1Df9EE64B35Fdd16966e08aCEC
 
+CCXT symbol format: "XYZ-CL/USDC:USDC"  (CCXT knows XYZ-* markets natively with
+                                          correct integer baseId — no synthetic
+                                          market injection needed)
+API coin format:    "xyz:CL"             (used for OHLCV and price lookups)
+
 Auth fields in .env:
   TRADEXYZ_WALLET_ADDRESS — 0x... wallet address
   TRADEXYZ_PRIVATE_KEY    — 0x... private key for signing
@@ -23,7 +28,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from src.exchanges._hip3 import ensure_hip3_market, get_hip3_mid_price, get_hip3_ohlcv, get_hip3_top_coins
+from src.exchanges._hip3 import get_hip3_mid_price, get_hip3_ohlcv, get_hip3_top_coins
 from src.exchanges.ccxt_base import CcxtAdapter
 from src.exchanges.hyperliquid import HyperliquidAdapter
 
@@ -34,11 +39,18 @@ _XYZ_BUILDER = "0x88806a71D74ad0a510b350545C9aE490912F0888"
 # Deployer == builder for TradeXYZ
 _XYZ_DEPLOYER = _XYZ_BUILDER
 
+# CCXT-native symbol prefix for XYZ HIP-3 markets (e.g. "XYZ-CL/USDC:USDC")
+_XYZ_SYMBOL_PREFIX = "XYZ-"
+
 
 class TradeXYZAdapter(HyperliquidAdapter):
     """
     TradeXYZ adapter — inherits all Hyperliquid logic.
-    Overrides get_top_coins() to return only xyz-tagged HIP-3 markets.
+    Overrides get_top_coins(), get_ohlcv(), and _get_market_price() for HIP-3.
+
+    CCXT knows TradeXYZ markets natively as "XYZ-CL/USDC:USDC" with correct
+    integer baseIds (e.g. 110029 for CL), so no synthetic market injection is
+    needed and place_order() is inherited unchanged from CcxtAdapter.
     """
 
     def __init__(self, config: "Config") -> None:
@@ -50,16 +62,16 @@ class TradeXYZAdapter(HyperliquidAdapter):
         )
 
     def get_top_coins(self, n: int) -> list[str]:
-        return get_hip3_top_coins(_XYZ_DEPLOYER, self.PERP_SUFFIX, n, quote=self.QUOTE_CURRENCY)
+        # Returns CCXT-native symbols, e.g. "XYZ-CL/USDC:USDC"
+        return get_hip3_top_coins(
+            _XYZ_DEPLOYER, self.PERP_SUFFIX, n, quote=self.QUOTE_CURRENCY, symbol_prefix=_XYZ_SYMBOL_PREFIX
+        )
 
     def get_ohlcv(self, symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
-        base = symbol.split("/")[0]  # "CL" from "CL/USDC:USDC"
+        # "XYZ-CL/USDC:USDC" → strip DEX prefix → "CL" → API coin "xyz:CL"
+        base = symbol.split("/")[0].split("-", 1)[-1]
         return get_hip3_ohlcv(f"xyz:{base}", timeframe, limit)
 
     def _get_market_price(self, symbol: str) -> float:
-        base = symbol.split("/")[0]
+        base = symbol.split("/")[0].split("-", 1)[-1]
         return get_hip3_mid_price(f"xyz:{base}")
-
-    def place_order(self, symbol: str, side: str, size: float, tp_pct: float, sl_pct: float):
-        ensure_hip3_market(self._exchange, symbol, "xyz")
-        return super().place_order(symbol, side, size, tp_pct, sl_pct)

@@ -55,17 +55,17 @@ class TestTradeXYZAdapterInterface:
 class TestTradeXYZGetTopCoins:
     def test_returns_hip3_coins(self, adapter):
         adp, _ = adapter
-        hip3_symbols = ["NVDA/USDC:USDC", "TSLA/USDC:USDC", "GOLD/USDC:USDC"]
+        hip3_symbols = ["XYZ-NVDA/USDC:USDC", "XYZ-TSLA/USDC:USDC", "XYZ-GOLD/USDC:USDC"]
         with patch("src.exchanges.tradexyz.get_hip3_top_coins", return_value=hip3_symbols) as mock_hip3:
             result = adp.get_top_coins(3)
         assert result == hip3_symbols
         mock_hip3.assert_called_once_with(
-            "0x88806a71D74ad0a510b350545C9aE490912F0888", ":USDC", 3, quote="USDC"
+            "0x88806a71D74ad0a510b350545C9aE490912F0888", ":USDC", 3, quote="USDC", symbol_prefix="XYZ-"
         )
 
     def test_returns_at_most_n(self, adapter):
         adp, _ = adapter
-        all_symbols = [f"ASSET{i}/USDC:USDC" for i in range(10)]
+        all_symbols = [f"XYZ-ASSET{i}/USDC:USDC" for i in range(10)]
         with patch("src.exchanges.tradexyz.get_hip3_top_coins", return_value=all_symbols[:3]):
             result = adp.get_top_coins(3)
         assert len(result) == 3
@@ -86,8 +86,9 @@ class TestTradeXYZGetOhlcv:
             [1_700_000_000_000, 100.0, 105.0, 98.0, 102.0, 500.0],
             [1_700_003_600_000, 102.0, 107.0, 101.0, 106.0, 600.0],
         ])
+        # Symbols are now CCXT-native "XYZ-CL/USDC:USDC"; adapter strips "XYZ-" → "xyz:CL"
         with patch("src.exchanges.tradexyz.get_hip3_ohlcv", return_value=fake) as mock_ohlcv:
-            df = adp.get_ohlcv("CL/USDC:USDC", "1h", 2)
+            df = adp.get_ohlcv("XYZ-CL/USDC:USDC", "1h", 2)
         mock_ohlcv.assert_called_once_with("xyz:CL", "1h", 2)
         assert list(df.columns) == ["open", "high", "low", "close", "volume"]
         assert len(df) == 2
@@ -97,7 +98,7 @@ class TestTradeXYZGetOhlcv:
         adp, _ = adapter
         fake = self._fake_df([[1_700_000_000_000, 100.0, 105.0, 98.0, 102.0, 500.0]])
         with patch("src.exchanges.tradexyz.get_hip3_ohlcv", return_value=fake):
-            df = adp.get_ohlcv("CL/USDC:USDC", "1h", 1)
+            df = adp.get_ohlcv("XYZ-CL/USDC:USDC", "1h", 1)
         assert isinstance(df.index, pd.DatetimeIndex)
 
 
@@ -147,8 +148,9 @@ class TestTradeXYZPlaceOrder:
             "average": 30000.0,
             "status": "closed",
         }
+        # Symbols are now CCXT-native "XYZ-CL/USDC:USDC"
         with patch("src.exchanges.tradexyz.get_hip3_mid_price", return_value=30000.0):
-            result = adp.place_order("CL/USDC:USDC", "buy", 0.01, 0.04, 0.02)
+            result = adp.place_order("XYZ-CL/USDC:USDC", "buy", 0.01, 0.04, 0.02)
         assert result.order_id == "12345"
         assert result.entry_price == 30000.0
         assert result.tp_price == pytest.approx(30000.0 * 1.04)
@@ -160,7 +162,7 @@ class TestTradeXYZPlaceOrder:
             "id": "1", "average": 30000.0, "status": "closed"
         }
         with patch("src.exchanges.tradexyz.get_hip3_mid_price", return_value=30000.0):
-            adp.place_order("CL/USDC:USDC", "buy", 0.01, 0.04, 0.02)
+            adp.place_order("XYZ-CL/USDC:USDC", "buy", 0.01, 0.04, 0.02)
         assert mock_ex.create_order.call_count == 3
 
 
