@@ -208,13 +208,17 @@ class CcxtAdapter(ExchangeAdapter, ABC):
         )
 
         # --- 3. SL — reduce-only stop-market ---
+        # stop_market fills at market price when triggered, so the position closes
+        # immediately and the TP limit is cancelled cleanly by the exchange.
+        # Using stop (stop-limit) caused Hyperliquid to cancel the TP when the SL
+        # converted to a live limit order (two reduce-only limits exceeding position size).
         sl_price = entry_price * (1 - sl_pct) if is_buy else entry_price * (1 + sl_pct)
         self._exchange.create_order(
             symbol=symbol,
-            type="stop",
+            type="stop_market",
             side=close_side,
             amount=size,
-            price=sl_price,
+            price=None,
             params={
                 "reduceOnly": True,
                 "stopPrice": sl_price,
