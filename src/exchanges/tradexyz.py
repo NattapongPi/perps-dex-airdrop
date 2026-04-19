@@ -75,3 +75,11 @@ class TradeXYZAdapter(HyperliquidAdapter):
     def _get_market_price(self, symbol: str) -> float:
         base = symbol.split("/")[0].split("-", 1)[-1]
         return get_hip3_mid_price(f"xyz:{base}")
+
+    def place_order(self, symbol: str, side: str, size: float, tp_pct: float, sl_pct: float):
+        # Switch to cross margin at the coin's maximum leverage before entry.
+        # ATR-based SL is always placed, so max leverage just maximises margin efficiency.
+        market = self._exchange.market(symbol)
+        max_lev = int((market.get("limits") or {}).get("leverage", {}).get("max") or 1)
+        self._exchange.set_margin_mode("cross", symbol, params={"leverage": max_lev})
+        return super().place_order(symbol, side, size, tp_pct, sl_pct)
