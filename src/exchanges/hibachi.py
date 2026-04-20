@@ -21,8 +21,11 @@ Quote currency is USDT (not USDC).
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import TYPE_CHECKING
+
+_logger = logging.getLogger(__name__)
 
 import ccxt
 import pandas as pd
@@ -186,10 +189,42 @@ class HibachiAdapter(ExchangeAdapter):
             time.sleep(1)
             entry_order = self._exchange.fetch_order(order_id, symbol)
         else:
-            raise RuntimeError(
-                f"Could not determine entry price for {symbol} after fill. "
-                f"Raw order response: {entry_order}"
+            # Primary poll loop exhausted — try fallbacks before giving up.
+
+            # Fallback 1: most recent trade for this order
+            actual_entry = 0.0
+            _logger.warning(
+                "Entry price not in order response for %s, falling back to fetch_my_trades",
+                symbol,
             )
+            try:
+                trades = self._exchange.fetch_my_trades(symbol, limit=5)
+                for trade in reversed(trades):
+                    if str(trade.get("order")) == str(order_id):
+                        actual_entry = float(trade.get("price") or 0)
+                        if actual_entry > 0:
+                            break
+            except Exception:
+                pass
+
+            # Fallback 2: entry price from the newly opened position
+            if actual_entry <= 0:
+                _logger.warning(
+                    "fetch_my_trades did not yield entry price for %s, falling back to fetch_position",
+                    symbol,
+                )
+                try:
+                    position = self._exchange.fetch_position(symbol)
+                    actual_entry = float(position.get("entryPrice") or 0)
+                except Exception:
+                    pass
+
+            if actual_entry <= 0:
+                raise RuntimeError(
+                    f"Could not determine entry price for {symbol} after fill "
+                    f"(tried order poll, fetch_my_trades, fetch_position). "
+                    f"Raw order response: {entry_order}"
+                )
 
         filled_size = float(entry_order.get("filled") or size)
         tp_price = actual_entry * (1 + tp_pct) if is_buy else actual_entry * (1 - tp_pct)
