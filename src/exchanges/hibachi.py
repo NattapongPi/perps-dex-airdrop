@@ -175,23 +175,38 @@ class HibachiAdapter(ExchangeAdapter):
             amount=size,
         )
 
-        # Hibachi market orders never carry fill price in the create_order response.
-        # Check once, then go straight to fetch_my_trades — no polling delay needed.
+        # Hibachi's create_order always returns {id, status:'pending'} with no
+        # price. fetch_order populates price/filled once the order is FILLED.
         order_id = entry_order.get("id")
+        entry_order = self._exchange.fetch_order(order_id, symbol)
         actual_entry = float(
             entry_order.get("average")
             or entry_order.get("price")
             or entry_order.get("info", {}).get("avgPx", 0)
         )
+        if actual_entry:
+            _logger.debug("Entry price resolved via fetch_order for %s: %s", symbol, actual_entry)
+
+        # Fallback 1: fetch_my_trades matched by order_id.
+        # CCXT normalises bidOrderId/askOrderId into the "order" field for both sides.
         if not actual_entry:
             _logger.warning(
-                "Entry price not in order response for %s, falling back to fetch_my_trades",
+                "Entry price not in fetch_order for %s, falling back to fetch_my_trades",
                 symbol,
             )
             trades = self._exchange.fetch_my_trades(symbol, limit=5)
             matching = [t for t in trades if t.get("order") == order_id]
             if matching:
                 actual_entry = float(matching[-1]["price"])
+                _logger.warning("Entry price resolved via fetch_my_trades for %s: %s", symbol, actual_entry)
+
+        # Fallback 2: most recent trade for this symbol — order was placed milliseconds ago.
+        if not actual_entry:
+            trades = self._exchange.fetch_my_trades(symbol, limit=1)
+            if trades:
+                actual_entry = float(trades[-1]["price"])
+                _logger.warning("Entry price resolved via latest trade fallback for %s: %s", symbol, actual_entry)
+
         if not actual_entry:
             raise RuntimeError(
                 f"Could not determine entry price for {symbol} after fill. "
