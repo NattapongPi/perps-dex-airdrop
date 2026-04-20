@@ -251,7 +251,7 @@ class HibachiAdapter(ExchangeAdapter):
             params={
                 "reduceOnly": True,
                 "triggerPrice": sl_price,
-                "triggerDirection": "BELOW" if is_buy else "ABOVE",
+                "triggerDirection": "LOW" if is_buy else "HIGH",
             },
         )
 
