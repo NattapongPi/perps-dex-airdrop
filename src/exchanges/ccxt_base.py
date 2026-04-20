@@ -219,7 +219,7 @@ class CcxtAdapter(ExchangeAdapter, ABC):
         sl_limit_price = sl_price * (1 - 0.03) if is_buy else sl_price * (1 + 0.03)
         self._exchange.create_order(
             symbol=symbol,
-            type="stop_market",
+            type="market",
             side=close_side,
             amount=size,
             price=sl_limit_price,
