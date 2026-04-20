@@ -12,7 +12,9 @@ exchanges:
         max_concurrent: 5
   - hibachi:
       position:
-        max_concurrent: 5
+        max_concurrent: 7
+      scan:
+        top_n: 7
 
 scan:
   top_n: 5
