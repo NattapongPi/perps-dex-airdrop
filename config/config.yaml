@@ -7,6 +7,8 @@ exchanges:
         max_concurrent: 10
       scan:
         top_n: 10
+      risk:
+        risk_pct: 0.1
   - dreamcash:
       position:
         max_concurrent: 5
