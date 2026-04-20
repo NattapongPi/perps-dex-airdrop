@@ -213,12 +213,16 @@ class CcxtAdapter(ExchangeAdapter, ABC):
         # Using stop (stop-limit) caused Hyperliquid to cancel the TP when the SL
         # converted to a live limit order (two reduce-only limits exceeding position size).
         sl_price = entry_price * (1 - sl_pct) if is_buy else entry_price * (1 + sl_pct)
+        # limitPx is 3% worse than trigger so the order fills even if price gaps through.
+        # sell (close long): accept up to 3% below trigger
+        # buy  (close short): accept up to 3% above trigger
+        sl_limit_price = sl_price * (1 - 0.03) if is_buy else sl_price * (1 + 0.03)
         self._exchange.create_order(
             symbol=symbol,
             type="stop_market",
             side=close_side,
             amount=size,
-            price=sl_price,
+            price=sl_limit_price,
             params={
                 "reduceOnly": True,
                 "stopPrice": sl_price,
