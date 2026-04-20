@@ -21,6 +21,7 @@ Quote currency is USDT (not USDC).
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING
 
 import ccxt
@@ -172,12 +173,19 @@ class HibachiAdapter(ExchangeAdapter):
             amount=size,
         )
 
-        actual_entry = float(
-            entry_order.get("average")
-            or entry_order.get("price")
-            or entry_order.get("info", {}).get("avgPx", 0)
-        )
-        if actual_entry <= 0:
+        # Hibachi returns status='pending' immediately — poll until filled.
+        order_id = entry_order.get("id")
+        for attempt in range(5):
+            actual_entry = float(
+                entry_order.get("average")
+                or entry_order.get("price")
+                or entry_order.get("info", {}).get("avgPx", 0)
+            )
+            if actual_entry > 0:
+                break
+            time.sleep(1)
+            entry_order = self._exchange.fetch_order(order_id, symbol)
+        else:
             raise RuntimeError(
                 f"Could not determine entry price for {symbol} after fill. "
                 f"Raw order response: {entry_order}"
