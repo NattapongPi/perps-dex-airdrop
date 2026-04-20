@@ -50,10 +50,12 @@ def _run_exchange(
     global_strategy = asdict(config.strategy)
     global_risk = asdict(config.risk)
     global_position = asdict(config.position)
+    global_scan = asdict(config.scan)
 
     strategy_cfg = _merge_config(global_strategy, overrides.get("strategy", {}))
     risk_cfg = _merge_config(global_risk, overrides.get("risk", {}))
     position_cfg = _merge_config(global_position, overrides.get("position", {}))
+    scan_cfg = _merge_config(global_scan, overrides.get("scan", {}))
 
     strategy = TrendFilter(
         ema_fast=strategy_cfg["ema_fast"],
@@ -70,7 +72,7 @@ def _run_exchange(
         return 0
 
     try:
-        top_coins = exchange.get_top_coins(config.scan.top_n)
+        top_coins = exchange.get_top_coins(scan_cfg["top_n"])
         open_positions = exchange.get_open_positions()
         open_symbols = {p.symbol for p in open_positions}
         balance = exchange.get_balance()
@@ -101,7 +103,7 @@ def _run_exchange(
             continue
 
         try:
-            df = exchange.get_ohlcv(symbol, config.scan.timeframe, config.scan.ohlcv_limit)
+            df = exchange.get_ohlcv(symbol, scan_cfg["timeframe"], scan_cfg["ohlcv_limit"])
         except Exception as exc:
             logger.warning("Failed to fetch OHLCV, skipping", extra={"exchange": exchange_name, "symbol": symbol, "error": str(exc)})
             continue

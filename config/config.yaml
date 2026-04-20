@@ -4,7 +4,9 @@
 exchanges:
   - tradexyz:
       position:
-        max_concurrent: 5
+        max_concurrent: 10
+      scan:
+        top_n: 10
   - dreamcash:
       position:
         max_concurrent: 5
