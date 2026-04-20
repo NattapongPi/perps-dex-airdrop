@@ -241,12 +241,18 @@ class HibachiAdapter(ExchangeAdapter):
         )
 
         # --- 3. SL — standalone reduce-only trigger market order ---
+        # triggerDirection is required by Hibachi whenever triggerPrice is set.
+        # Long SL fires when price drops BELOW sl_price; short SL fires ABOVE.
         self._exchange.create_order(
             symbol=symbol,
             type="market",
             side=close_side,
             amount=filled_size,
-            params={"reduceOnly": True, "triggerPrice": sl_price},
+            params={
+                "reduceOnly": True,
+                "triggerPrice": sl_price,
+                "triggerDirection": "BELOW" if is_buy else "ABOVE",
+            },
         )
 
         return OrderResult(
