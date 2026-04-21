@@ -1,5 +1,14 @@
 # Airdrop Trading Bot — Claude Context
 
+> **Start here:** Before reading any source files, check `docs/` for compact module guides.
+> - [`docs/project.md`](docs/project.md) — overview & architecture
+> - [`docs/exchanges.md`](docs/exchanges.md) — adapters, credentials, builder fees
+> - [`docs/indicators.md`](docs/indicators.md) — EMA & ATR
+> - [`docs/risk.md`](docs/risk.md) — position sizing & SL/TP
+> - [`docs/strategy.md`](docs/strategy.md) — trend filter signal
+> - [`docs/config.md`](docs/config.md) — configuration loading
+> - [`docs/main.md`](docs/main.md) — orchestrator & entry points
+
 ## What this is
 Multi-exchange perpetual futures trading bot targeting HIP-3 DEX airdrop farming.
 Trades on TradeXYZ (xyz-tagged markets), DreamCash (cash-tagged markets), and Hibachi.
@@ -104,3 +113,22 @@ r = requests.post("https://api.hyperliquid.xyz/info", json={"type": "perpDexs"})
 for dex in r.json():
     print(dex.get("deployer"), list(dex.get("assetToStreamingOiCap", {}).keys())[:3])
 ```
+
+---
+
+## Documentation Maintenance
+
+After making any code changes, **update the relevant `docs/` files** so they stay in sync with the source.
+
+| If you changed... | Update... |
+|-------------------|-----------|
+| Any exchange adapter | `docs/exchanges.md` |
+| `ccxt_base.py` or builder fee logic | `docs/exchanges.md` |
+| `ema.py` / `atr.py` | `docs/indicators.md` |
+| `sizing.py` | `docs/risk.md` |
+| `trend_filter.py` | `docs/strategy.md` |
+| `config_loader.py` | `docs/config.md` |
+| `main.py` / `lambda_handler.py` / health servers | `docs/main.md` |
+| Project structure or new modules | `docs/project.md` |
+
+**Rule of thumb:** If an agent would need to read source code to understand what you changed, the docs need updating too.
