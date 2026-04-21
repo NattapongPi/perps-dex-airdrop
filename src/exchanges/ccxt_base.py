@@ -63,20 +63,23 @@ class CcxtAdapter(ExchangeAdapter, ABC):
             Set only on exchanges with an XP/points programme. Default 0.0 = no fee.
         """
         exchange_cls = getattr(ccxt, self.CCXT_ID)
-        self._exchange = exchange_cls({
-            "walletAddress": api_key,
-            "privateKey": api_secret,
-        })
+        self._exchange = exchange_cls(
+            {
+                "walletAddress": api_key,
+                "privateKey": api_secret,
+            }
+        )
 
         # Allow market orders without an explicit price (CCXT Hyperliquid converts
         # them to IOC limit orders using last_price ± slippage%).
         self._exchange.options["defaultSlippage"] = 0.01
 
-        # Set builder code once — CCXT attaches it to every order.
+        self._builder_approved = False
         if builder_code:
-            self._exchange.options["broker"] = builder_code
-            if builder_fee:
-                self._exchange.options["builderFee"] = builder_fee
+            self._exchange.options["builder"] = builder_code
+            if builder_fee > 0:
+                self._exchange.options["feeInt"] = int(builder_fee * 10000)
+                self._exchange.options["feeRate"] = "0.03%"
 
     def _get_market_price(self, symbol: str) -> float | None:
         """Return current mid price for market order slippage calculation.
@@ -117,7 +120,9 @@ class CcxtAdapter(ExchangeAdapter, ABC):
             Index: pd.DatetimeIndex UTC ascending (oldest first).
         """
         raw = self._exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
-        df = pd.DataFrame(raw, columns=["timestamp", "open", "high", "low", "close", "volume"])
+        df = pd.DataFrame(
+            raw, columns=["timestamp", "open", "high", "low", "close", "volume"]
+        )
         df.index = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
         return df[["open", "high", "low", "close", "volume"]].sort_index()
 
@@ -136,12 +141,14 @@ class CcxtAdapter(ExchangeAdapter, ABC):
             if size == 0:
                 continue
             side = "long" if p.get("side") == "long" else "short"
-            positions.append(Position(
-                symbol=p["symbol"],
-                side=side,
-                size=size,
-                entry_price=float(p.get("entryPrice") or 0),
-            ))
+            positions.append(
+                Position(
+                    symbol=p["symbol"],
+                    side=side,
+                    size=size,
+                    entry_price=float(p.get("entryPrice") or 0),
+                )
+            )
         return positions
 
     def get_balance(self) -> float:
@@ -150,6 +157,12 @@ class CcxtAdapter(ExchangeAdapter, ABC):
         """
         balance = self._exchange.fetch_balance()
         return float(balance.get(self.QUOTE_CURRENCY, {}).get("free", 0))
+
+    def _ensure_builder_approved(self) -> None:
+        if self._builder_approved:
+            return
+        self._exchange.handle_builder_fee_approval()
+        self._builder_approved = True
 
     def place_order(
         self,
@@ -166,6 +179,7 @@ class CcxtAdapter(ExchangeAdapter, ABC):
         2. TP — reduce-only GTC limit on opposite side
         3. SL — reduce-only stop-market on opposite side
         """
+        self._ensure_builder_approved()
         is_buy = side == "buy"
         close_side = "sell" if is_buy else "buy"
 

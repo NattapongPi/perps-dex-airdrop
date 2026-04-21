@@ -41,7 +41,7 @@ class TestTradeXYZAdapterInterface:
 
     def test_stores_builder_code(self, adapter):
         adp, _ = adapter
-        assert adp._exchange.options["broker"] == "0xBUILDER"
+        assert adp._exchange.options["builder"] == "0xBUILDER"
 
     def test_ccxt_id(self, adapter):
         adp, _ = adapter
@@ -55,18 +55,30 @@ class TestTradeXYZAdapterInterface:
 class TestTradeXYZGetTopCoins:
     def test_returns_hip3_coins(self, adapter):
         adp, _ = adapter
-        hip3_symbols = ["XYZ-NVDA/USDC:USDC", "XYZ-TSLA/USDC:USDC", "XYZ-GOLD/USDC:USDC"]
-        with patch("src.exchanges.tradexyz.get_hip3_top_coins", return_value=hip3_symbols) as mock_hip3:
+        hip3_symbols = [
+            "XYZ-NVDA/USDC:USDC",
+            "XYZ-TSLA/USDC:USDC",
+            "XYZ-GOLD/USDC:USDC",
+        ]
+        with patch(
+            "src.exchanges.tradexyz.get_hip3_top_coins", return_value=hip3_symbols
+        ) as mock_hip3:
             result = adp.get_top_coins(3)
         assert result == hip3_symbols
         mock_hip3.assert_called_once_with(
-            "0x88806a71D74ad0a510b350545C9aE490912F0888", ":USDC", 3, quote="USDC", symbol_prefix="XYZ-"
+            "0x88806a71D74ad0a510b350545C9aE490912F0888",
+            ":USDC",
+            3,
+            quote="USDC",
+            symbol_prefix="XYZ-",
         )
 
     def test_returns_at_most_n(self, adapter):
         adp, _ = adapter
         all_symbols = [f"XYZ-ASSET{i}/USDC:USDC" for i in range(10)]
-        with patch("src.exchanges.tradexyz.get_hip3_top_coins", return_value=all_symbols[:3]):
+        with patch(
+            "src.exchanges.tradexyz.get_hip3_top_coins", return_value=all_symbols[:3]
+        ):
             result = adp.get_top_coins(3)
         assert len(result) == 3
 
@@ -74,20 +86,30 @@ class TestTradeXYZGetTopCoins:
 class TestTradeXYZGetOhlcv:
     def _fake_df(self, rows):
         import pandas as pd
-        data = [{"t": r[0], "o": r[1], "h": r[2], "l": r[3], "c": r[4], "v": r[5]} for r in rows]
+
+        data = [
+            {"t": r[0], "o": r[1], "h": r[2], "l": r[3], "c": r[4], "v": r[5]}
+            for r in rows
+        ]
         df = pd.DataFrame(data)
         df.index = pd.to_datetime(df["t"], unit="ms", utc=True)
-        df = df.rename(columns={"o": "open", "h": "high", "l": "low", "c": "close", "v": "volume"})
+        df = df.rename(
+            columns={"o": "open", "h": "high", "l": "low", "c": "close", "v": "volume"}
+        )
         return df[["open", "high", "low", "close", "volume"]].astype(float).sort_index()
 
     def test_returns_correct_dataframe(self, adapter):
         adp, _ = adapter
-        fake = self._fake_df([
-            [1_700_000_000_000, 100.0, 105.0, 98.0, 102.0, 500.0],
-            [1_700_003_600_000, 102.0, 107.0, 101.0, 106.0, 600.0],
-        ])
+        fake = self._fake_df(
+            [
+                [1_700_000_000_000, 100.0, 105.0, 98.0, 102.0, 500.0],
+                [1_700_003_600_000, 102.0, 107.0, 101.0, 106.0, 600.0],
+            ]
+        )
         # Symbols are now CCXT-native "XYZ-CL/USDC:USDC"; adapter strips "XYZ-" → "xyz:CL"
-        with patch("src.exchanges.tradexyz.get_hip3_ohlcv", return_value=fake) as mock_ohlcv:
+        with patch(
+            "src.exchanges.tradexyz.get_hip3_ohlcv", return_value=fake
+        ) as mock_ohlcv:
             df = adp.get_ohlcv("XYZ-CL/USDC:USDC", "1h", 2)
         mock_ohlcv.assert_called_once_with("xyz:CL", "1h", 2)
         assert list(df.columns) == ["open", "high", "low", "close", "volume"]
@@ -107,7 +129,12 @@ class TestTradeXYZGetPositions:
         adp, mock_ex = adapter
         mock_ex.fetch_positions.return_value = [
             {"symbol": "BTC:USDC", "contracts": 0, "side": "long", "entryPrice": 30000},
-            {"symbol": "ETH:USDC", "contracts": 1.5, "side": "long", "entryPrice": 2000},
+            {
+                "symbol": "ETH:USDC",
+                "contracts": 1.5,
+                "side": "long",
+                "entryPrice": 2000,
+            },
         ]
         positions = adp.get_open_positions()
         assert len(positions) == 1
@@ -116,7 +143,12 @@ class TestTradeXYZGetPositions:
     def test_maps_to_position_dataclass(self, adapter):
         adp, mock_ex = adapter
         mock_ex.fetch_positions.return_value = [
-            {"symbol": "BTC:USDC", "contracts": 0.5, "side": "long", "entryPrice": 30000},
+            {
+                "symbol": "BTC:USDC",
+                "contracts": 0.5,
+                "side": "long",
+                "entryPrice": 30000,
+            },
         ]
         positions = adp.get_open_positions()
         p = positions[0]
@@ -159,7 +191,9 @@ class TestTradeXYZPlaceOrder:
     def test_places_three_orders(self, adapter):
         adp, mock_ex = adapter
         mock_ex.create_order.return_value = {
-            "id": "1", "average": 30000.0, "status": "closed"
+            "id": "1",
+            "average": 30000.0,
+            "status": "closed",
         }
         with patch("src.exchanges.tradexyz.get_hip3_mid_price", return_value=30000.0):
             adp.place_order("XYZ-CL/USDC:USDC", "buy", 0.01, 0.04, 0.02)

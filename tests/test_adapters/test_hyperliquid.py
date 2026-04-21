@@ -42,7 +42,7 @@ class TestHyperliquidAdapterInterface:
 
     def test_stores_builder_code(self, adapter):
         adp, _ = adapter
-        assert adp._exchange.options["broker"] == "0xBUILDER"
+        assert adp._exchange.options["builder"] == "0xBUILDER"
 
     def test_ccxt_id(self, adapter):
         adp, _ = adapter
@@ -86,8 +86,7 @@ class TestHyperliquidGetTopCoins:
     def test_returns_at_most_n(self, adapter):
         adp, mock_ex = adapter
         mock_ex.fetch_tickers.return_value = {
-            f"COIN{i}:USDC": {"openInterestValue": i * 1000}
-            for i in range(10)
+            f"COIN{i}:USDC": {"openInterestValue": i * 1000} for i in range(10)
         }
         result = adp.get_top_coins(3)
         assert len(result) == 3
@@ -119,7 +118,12 @@ class TestHyperliquidGetPositions:
         adp, mock_ex = adapter
         mock_ex.fetch_positions.return_value = [
             {"symbol": "BTC:USDC", "contracts": 0, "side": "long", "entryPrice": 30000},
-            {"symbol": "ETH:USDC", "contracts": 1.5, "side": "long", "entryPrice": 2000},
+            {
+                "symbol": "ETH:USDC",
+                "contracts": 1.5,
+                "side": "long",
+                "entryPrice": 2000,
+            },
         ]
         positions = adp.get_open_positions()
         assert len(positions) == 1
@@ -128,7 +132,12 @@ class TestHyperliquidGetPositions:
     def test_maps_to_position_dataclass(self, adapter):
         adp, mock_ex = adapter
         mock_ex.fetch_positions.return_value = [
-            {"symbol": "BTC:USDC", "contracts": 0.5, "side": "long", "entryPrice": 30000},
+            {
+                "symbol": "BTC:USDC",
+                "contracts": 0.5,
+                "side": "long",
+                "entryPrice": 30000,
+            },
         ]
         positions = adp.get_open_positions()
         p = positions[0]
@@ -169,7 +178,9 @@ class TestHyperliquidPlaceOrder:
     def test_places_three_orders(self, adapter):
         adp, mock_ex = adapter
         mock_ex.create_order.return_value = {
-            "id": "1", "average": 30000.0, "status": "closed"
+            "id": "1",
+            "average": 30000.0,
+            "status": "closed",
         }
         adp.place_order("BTC:USDC", "buy", 0.01, 0.04, 0.02)
         # entry + TP + SL = 3 calls

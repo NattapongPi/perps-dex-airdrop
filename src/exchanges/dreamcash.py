@@ -74,13 +74,17 @@ class DreamCashAdapter(HyperliquidAdapter):
             api_key=config.secrets.dreamcash_api_key,
             api_secret=config.secrets.dreamcash_api_secret,
             builder_code=config.secrets.dreamcash_builder_code or _DREAMCASH_BUILDER,
-            builder_fee=0.00045,  # 0.045% — earns 1 XP per $ traded on DreamCash
+            builder_fee=0.0002,  # 0.02% — earns 0.5 XP per $ traded on DreamCash
         )
 
     def get_top_coins(self, n: int) -> list[str]:
         # Returns CCXT-native symbols, e.g. "CASH-WTI/USDT0:USDT0"
         return get_hip3_top_coins(
-            _DREAMCASH_DEPLOYER, _CASH_PERP_SUFFIX, n, quote=_CASH_SYMBOL_QUOTE, symbol_prefix=_CASH_SYMBOL_PREFIX
+            _DREAMCASH_DEPLOYER,
+            _CASH_PERP_SUFFIX,
+            n,
+            quote=_CASH_SYMBOL_QUOTE,
+            symbol_prefix=_CASH_SYMBOL_PREFIX,
         )
 
     def get_ohlcv(self, symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
@@ -92,7 +96,9 @@ class DreamCashAdapter(HyperliquidAdapter):
         base = symbol.split("/")[0].split("-", 1)[-1]
         return get_hip3_mid_price(f"cash:{base}")
 
-    def place_order(self, symbol: str, side: str, size: float, tp_pct: float, sl_pct: float):
+    def place_order(
+        self, symbol: str, side: str, size: float, tp_pct: float, sl_pct: float
+    ):
         # CASH HIP-3 assets only support isolated margin (cross is rejected by Hyperliquid).
         # Set isolated leverage capped at 10x before entry — ATR-based SL limits real risk.
         market = self._exchange.market(symbol)
