@@ -150,7 +150,7 @@ def function_exists(name: str) -> bool:
 def create_or_update_lambda(role_arn: str) -> str:
     """Create new function or update existing one. Returns function ARN."""
     env_vars = load_env()
-    env_json = json.dumps({"Variables": env_vars})
+    env_json = json.dumps({"Variables": env_vars}) if env_vars else None
 
     if not ZIP_FILE.exists():
         print(f"ERROR: {ZIP_FILE} not found. Run scripts/build_lambda.py first.")
@@ -170,48 +170,48 @@ def create_or_update_lambda(role_arn: str) -> str:
         )
         print("Waiting 10s for code update to settle...")
         time.sleep(10)
-        aws_cli(
-            [
-                "lambda",
-                "update-function-configuration",
-                "--function-name",
-                FUNCTION_NAME,
-                "--handler",
-                HANDLER,
-                "--runtime",
-                RUNTIME,
-                "--memory-size",
-                str(MEMORY),
-                "--timeout",
-                str(TIMEOUT),
-                "--environment",
-                env_json,
-            ]
-        )
+        update_cmd = [
+            "lambda",
+            "update-function-configuration",
+            "--function-name",
+            FUNCTION_NAME,
+            "--handler",
+            HANDLER,
+            "--runtime",
+            RUNTIME,
+            "--memory-size",
+            str(MEMORY),
+            "--timeout",
+            str(TIMEOUT),
+        ]
+        if env_json:
+            update_cmd += ["--environment", env_json]
+        else:
+            print("No .env found — skipping env var update to preserve existing vars.")
+        aws_cli(update_cmd)
     else:
         print(f"Creating new Lambda: {FUNCTION_NAME}")
-        aws_cli(
-            [
-                "lambda",
-                "create-function",
-                "--function-name",
-                FUNCTION_NAME,
-                "--runtime",
-                RUNTIME,
-                "--role",
-                role_arn,
-                "--handler",
-                HANDLER,
-                "--memory-size",
-                str(MEMORY),
-                "--timeout",
-                str(TIMEOUT),
-                "--zip-file",
-                f"fileb://{ZIP_FILE}",
-                "--environment",
-                env_json,
-            ]
-        )
+        create_cmd = [
+            "lambda",
+            "create-function",
+            "--function-name",
+            FUNCTION_NAME,
+            "--runtime",
+            RUNTIME,
+            "--role",
+            role_arn,
+            "--handler",
+            HANDLER,
+            "--memory-size",
+            str(MEMORY),
+            "--timeout",
+            str(TIMEOUT),
+            "--zip-file",
+            f"fileb://{ZIP_FILE}",
+        ]
+        if env_json:
+            create_cmd += ["--environment", env_json]
+        aws_cli(create_cmd)
 
     out = aws_cli(
         ["lambda", "get-function", "--function-name", FUNCTION_NAME],
