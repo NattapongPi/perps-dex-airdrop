@@ -46,8 +46,12 @@ SCHEDULER_ROLE_NAME = f"{FUNCTION_NAME}-scheduler-role"
 
 
 def aws_cli(cmd: list[str], capture: bool = False) -> str:
-    """Run an AWS CLI command with the configured profile/region."""
-    base = ["aws", "--profile", AWS_PROFILE, "--region", AWS_REGION]
+    """Run an AWS CLI command. Uses --profile in local dev, env vars in CI."""
+    # In GitHub Actions, AWS credentials come from env vars, not a profile
+    if os.environ.get("GITHUB_ACTIONS") or os.environ.get("AWS_ACCESS_KEY_ID"):
+        base = ["aws", "--region", AWS_REGION]
+    else:
+        base = ["aws", "--profile", AWS_PROFILE, "--region", AWS_REGION]
     full = base + cmd
     print(f"$ aws ... {' '.join(cmd)}")
     if capture:
@@ -359,14 +363,16 @@ def create_or_update_schedule(function_arn: str) -> None:
 
 
 def main() -> None:
-    try:
-        aws_cli(["sts", "get-caller-identity"], capture=True)
-    except subprocess.CalledProcessError:
-        print(
-            "ERROR: AWS CLI is not configured. Run 'aws configure' first.\n"
-            "See LAMBDA_SETUP.md for detailed instructions."
-        )
-        sys.exit(1)
+    # Skip configure check in CI — credentials come from env vars
+    if not os.environ.get("GITHUB_ACTIONS"):
+        try:
+            aws_cli(["sts", "get-caller-identity"], capture=True)
+        except subprocess.CalledProcessError:
+            print(
+                "ERROR: AWS CLI is not configured. Run 'aws configure' first.\n"
+                "See LAMBDA_SETUP.md for detailed instructions."
+            )
+            sys.exit(1)
 
     role_arn = create_execution_role()
     function_arn = create_or_update_lambda(role_arn)
