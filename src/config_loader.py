@@ -89,6 +89,9 @@ class SecretsConfig:
     dreamcash_api_key: str       # wallet address
     dreamcash_api_secret: str    # private key
     dreamcash_builder_code: str  # override if needed; adapter defaults to official address
+    # Dango (custom L1, secp256k1 signing — shares same Hyperliquid wallet)
+    dango_wallet_address: str    # 0x... Ethereum-style wallet address
+    dango_private_key: str       # 0x... secp256k1 private key
 
 
 @dataclass(frozen=True)
@@ -155,9 +158,39 @@ def load_config(config_path: Path = _CONFIG_PATH) -> Config:
 
     dry_run = os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes") or bool(raw.get("dry_run", False))
 
+    # Build secrets first so we can filter exchanges before constructing Config.
+    secrets = SecretsConfig(
+        hyperliquid_api_key=_secret("HYPERLIQUID_WALLET_ADDRESS"),
+        hyperliquid_api_secret=_secret("HYPERLIQUID_PRIVATE_KEY"),
+        hyperliquid_builder_code=_secret("HYPERLIQUID_BUILDER_CODE"),
+        hibachi_api_key=_secret("HIBACHI_API_KEY"),
+        hibachi_account_id=_secret("HIBACHI_ACCOUNT_ID"),
+        hibachi_private_key=_secret("HIBACHI_PRIVATE_KEY"),
+        tradexyz_api_key=_secret("HYPERLIQUID_WALLET_ADDRESS"),
+        tradexyz_api_secret=_secret("HYPERLIQUID_PRIVATE_KEY"),
+        tradexyz_builder_code=_secret("TRADEXYZ_BUILDER_CODE"),
+        dreamcash_api_key=_secret("HYPERLIQUID_WALLET_ADDRESS"),
+        dreamcash_api_secret=_secret("HYPERLIQUID_PRIVATE_KEY"),
+        dreamcash_builder_code=_secret("DREAMCASH_BUILDER_CODE"),
+        dango_wallet_address=_secret("DANGO_WALLET_ADDRESS") or _secret("HYPERLIQUID_WALLET_ADDRESS"),
+        dango_private_key=_secret("DANGO_PRIVATE_KEY") or _secret("HYPERLIQUID_PRIVATE_KEY"),
+    )
+
+    # Skip any exchange whose required secrets are missing (warn, don't crash).
+    active_exchanges: list[str] = []
+    for name in parsed_exchanges:
+        missing = [
+            f for f in _REQUIRED_SECRETS.get(name, [])
+            if not getattr(secrets, f, "")
+        ]
+        if missing:
+            print(f"WARNING: Skipping exchange '{name}' — missing credentials: {missing}")
+        else:
+            active_exchanges.append(name)
+
     config = Config(
-        exchanges=parsed_exchanges,
-        per_exchange=per_exchange,
+        exchanges=active_exchanges,
+        per_exchange={k: v for k, v in per_exchange.items() if k in active_exchanges},
         dry_run=dry_run,
         scan=ScanConfig(
             top_n=int(scan_raw.get("top_n", 20)),
@@ -181,20 +214,7 @@ def load_config(config_path: Path = _CONFIG_PATH) -> Config:
         logging=LoggingConfig(
             level=str(logging_raw.get("level", "INFO")).upper(),
         ),
-        secrets=SecretsConfig(
-            hyperliquid_api_key=_secret("HYPERLIQUID_WALLET_ADDRESS"),
-            hyperliquid_api_secret=_secret("HYPERLIQUID_PRIVATE_KEY"),
-            hyperliquid_builder_code=_secret("HYPERLIQUID_BUILDER_CODE"),
-            hibachi_api_key=_secret("HIBACHI_API_KEY"),
-            hibachi_account_id=_secret("HIBACHI_ACCOUNT_ID"),
-            hibachi_private_key=_secret("HIBACHI_PRIVATE_KEY"),
-            tradexyz_api_key=_secret("HYPERLIQUID_WALLET_ADDRESS"),
-            tradexyz_api_secret=_secret("HYPERLIQUID_PRIVATE_KEY"),
-            tradexyz_builder_code=_secret("TRADEXYZ_BUILDER_CODE"),
-            dreamcash_api_key=_secret("HYPERLIQUID_WALLET_ADDRESS"),
-            dreamcash_api_secret=_secret("HYPERLIQUID_PRIVATE_KEY"),
-            dreamcash_builder_code=_secret("DREAMCASH_BUILDER_CODE"),
-        ),
+        secrets=secrets,
     )
 
     _validate(config)
@@ -203,9 +223,10 @@ def load_config(config_path: Path = _CONFIG_PATH) -> Config:
 
 _REQUIRED_SECRETS: dict[str, list[str]] = {
     "hyperliquid": ["hyperliquid_api_key", "hyperliquid_api_secret"],
-    "tradexyz":    [],  # shares Hyperliquid wallet — adapter fails at connect if missing
-    "dreamcash":   [],  # shares Hyperliquid wallet — adapter fails at connect if missing
+    "tradexyz":    ["tradexyz_api_key", "tradexyz_api_secret"],   # shares HL wallet
+    "dreamcash":   ["dreamcash_api_key", "dreamcash_api_secret"], # shares HL wallet
     "hibachi":     ["hibachi_api_key", "hibachi_account_id", "hibachi_private_key"],
+    "dango":       ["dango_wallet_address", "dango_private_key"],
 }
 
 
@@ -219,13 +240,6 @@ def _validate(config: Config) -> None:
                 f"Unknown exchange '{name}'. "
                 f"Available: {sorted(REGISTRY.keys())}"
             )
-        for field in _REQUIRED_SECRETS.get(name, []):
-            if not getattr(config.secrets, field, ""):
-                env_name = field.upper().replace("api_key", "wallet_address").replace("api_secret", "private_key")
-                raise ValueError(
-                    f"Missing required secret for '{name}': {field!r}. "
-                    f"Set the corresponding env var (e.g. {env_name.upper()}) in your .env file."
-                )
 
     if config.strategy.ema_fast >= config.strategy.ema_slow:
         raise ValueError(
