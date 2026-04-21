@@ -253,6 +253,30 @@ class HibachiAdapter(ExchangeAdapter):
             status=entry_order.get("status", "open"),
         )
 
+    def cancel_orphan_orders(self, open_positions) -> int:
+        """
+        Cancel open orders for symbols with no open position.
+
+        Hibachi does not auto-cancel reduce-only orders when a position closes,
+        so a TP limit order left after an SL hit can re-open an unwanted position.
+        This runs at scan start to clean up any such orphans.
+        """
+        open_syms = {p.symbol for p in open_positions}
+        open_orders = self._exchange.fetch_open_orders()
+        cancelled = 0
+        for order in open_orders:
+            if order["symbol"] not in open_syms:
+                try:
+                    self._exchange.cancel_order(order["id"], order["symbol"])
+                    _logger.info(
+                        "Cancelled orphan order %s for %s (no open position)",
+                        order["id"], order["symbol"],
+                    )
+                    cancelled += 1
+                except Exception as exc:
+                    _logger.warning("Failed to cancel orphan order %s: %s", order["id"], exc)
+        return cancelled
+
     def ping(self) -> bool:
         """Lightweight connectivity check via public inventory endpoint."""
         try:

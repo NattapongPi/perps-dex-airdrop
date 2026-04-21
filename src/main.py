@@ -90,6 +90,10 @@ def _run_exchange(
         },
     )
 
+    cancelled = exchange.cancel_orphan_orders(open_positions)
+    if cancelled:
+        logger.info("Cancelled orphan orders", extra={"exchange": exchange_name, "count": cancelled})
+
     orders_placed = 0
     max_concurrent = position_cfg["max_concurrent"]
 

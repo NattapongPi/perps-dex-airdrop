@@ -120,3 +120,17 @@ class ExchangeAdapter(ABC):
         Return True if the exchange is reachable and credentials are valid.
         Used by the healthcheck endpoint.
         """
+
+    def cancel_orphan_orders(self, open_positions: list[Position]) -> int:
+        """
+        Cancel open orders for symbols that have no open position.
+
+        Called at the start of each scan to clean up TP/SL orders left behind
+        after a position was closed (e.g. SL triggered but TP not auto-cancelled).
+
+        Default is a no-op — override in exchanges that don't auto-cancel
+        reduce-only orders when a position closes (e.g. Hibachi).
+
+        Returns the number of orders cancelled.
+        """
+        return 0
