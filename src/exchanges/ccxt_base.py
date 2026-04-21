@@ -47,6 +47,7 @@ class CcxtAdapter(ExchangeAdapter, ABC):
         api_key: str,
         api_secret: str,
         builder_code: str,
+        builder_fee: float = 0.0,
     ) -> None:
         """
         Parameters
@@ -57,6 +58,9 @@ class CcxtAdapter(ExchangeAdapter, ABC):
             Private key for signing orders.
         builder_code : str
             Builder address for fee-share. Empty string = no builder.
+        builder_fee : float
+            Builder fee as a decimal fraction (e.g. 0.00045 = 0.045%).
+            Set only on exchanges with an XP/points programme. Default 0.0 = no fee.
         """
         exchange_cls = getattr(ccxt, self.CCXT_ID)
         self._exchange = exchange_cls({
@@ -69,11 +73,10 @@ class CcxtAdapter(ExchangeAdapter, ABC):
         self._exchange.options["defaultSlippage"] = 0.01
 
         # Set builder code once — CCXT attaches it to every order.
-        # builderFee=False means we supply our own address rather than using
-        # CCXT's default fee schedule.
         if builder_code:
             self._exchange.options["broker"] = builder_code
-            self._exchange.options["builderFee"] = 0.00045  # 0.045% — earns 1 XP per $ traded
+            if builder_fee:
+                self._exchange.options["builderFee"] = builder_fee
 
     def _get_market_price(self, symbol: str) -> float | None:
         """Return current mid price for market order slippage calculation.

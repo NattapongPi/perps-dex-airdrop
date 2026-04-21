@@ -74,6 +74,7 @@ class DreamCashAdapter(HyperliquidAdapter):
             api_key=config.secrets.dreamcash_api_key,
             api_secret=config.secrets.dreamcash_api_secret,
             builder_code=config.secrets.dreamcash_builder_code or _DREAMCASH_BUILDER,
+            builder_fee=0.00045,  # 0.045% — earns 1 XP per $ traded on DreamCash
         )
 
     def get_top_coins(self, n: int) -> list[str]:
