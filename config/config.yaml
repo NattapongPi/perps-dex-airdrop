@@ -11,7 +11,7 @@ exchanges:
         risk_pct: 0.1
   - dreamcash:
       position:
-        max_concurrent: 5
+        max_concurrent: 8
   - hibachi:
       position:
         max_concurrent: 7
