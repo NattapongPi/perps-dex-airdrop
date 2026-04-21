@@ -40,11 +40,11 @@ class TestDreamCashAdapterInterface:
 
     def test_stores_fee_int(self, adapter):
         adp, _ = adapter
-        assert adp._exchange.options["feeInt"] == 2
+        assert adp._exchange.options["feeInt"] == 20
 
     def test_stores_fee_rate(self, adapter):
         adp, _ = adapter
-        assert adp._exchange.options["feeRate"] == "0.03%"
+        assert adp._exchange.options["feeRate"] == "0.02%"
 
     def test_ccxt_id(self, adapter):
         adp, _ = adapter

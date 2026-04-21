@@ -78,8 +78,14 @@ class CcxtAdapter(ExchangeAdapter, ABC):
         if builder_code:
             self._exchange.options["builder"] = builder_code
             if builder_fee > 0:
-                self._exchange.options["feeInt"] = int(builder_fee * 10000)
-                self._exchange.options["feeRate"] = "0.03%"
+                # Hyperliquid builder fee 'f' is in tenths of a basis point.
+                # 1 basis point = 0.01% → feeInt = 10.  Multiplier = 100_000.
+                self._exchange.options["feeInt"] = int(builder_fee * 100_000)
+                # maxFeeRate must be >= the actual fee rate charged per order.
+                fee_pct = builder_fee * 100
+                self._exchange.options["feeRate"] = (
+                    f"{fee_pct:.10f}".rstrip("0").rstrip(".") + "%"
+                )
 
     def _get_market_price(self, symbol: str) -> float | None:
         """Return current mid price for market order slippage calculation.
