@@ -286,6 +286,7 @@ def create_scheduler_role(function_arn: str) -> str:
 def create_or_update_schedule(function_arn: str) -> None:
     """Create or update the EventBridge schedule to invoke Lambda every hour."""
     schedule_group = "default"
+    account_id = get_account_id()
     scheduler_role_arn = create_scheduler_role(function_arn)
     target = {
         "RoleArn": scheduler_role_arn,
@@ -355,7 +356,7 @@ def create_or_update_schedule(function_arn: str) -> None:
                 "--principal",
                 "scheduler.amazonaws.com",
                 "--source-arn",
-                f"arn:aws:scheduler:{AWS_REGION}:273221486440:schedule/{schedule_group}/{SCHEDULE_NAME}",
+                f"arn:aws:scheduler:{AWS_REGION}:{account_id}:schedule/{schedule_group}/{SCHEDULE_NAME}",
             ]
         )
     except subprocess.CalledProcessError:
