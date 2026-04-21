@@ -73,7 +73,7 @@ class CcxtAdapter(ExchangeAdapter, ABC):
         # CCXT's default fee schedule.
         if builder_code:
             self._exchange.options["broker"] = builder_code
-            self._exchange.options["builderFee"] = False
+            self._exchange.options["builderFee"] = 0.00045  # 0.045% — earns 1 XP per $ traded
 
     def _get_market_price(self, symbol: str) -> float | None:
         """Return current mid price for market order slippage calculation.
