@@ -1,7 +1,7 @@
 # airdrop-bot
 
 Perpetual futures trading bot targeting HIP-3 DEX airdrop farming on Hyperliquid.
-Trades TradeXYZ, DreamCash, and Hibachi. Runs hourly via cron on ECS Fargate.
+Trades TradeXYZ, DreamCash, and Hibachi. Runs hourly via AWS Lambda + EventBridge Scheduler.
 
 ## Strategy
 
@@ -93,14 +93,30 @@ pytest tests/
 
 ## Deploy
 
-Push to `main` → GitHub Actions → Docker build → ECR → ECS force-redeploy.
+### Option A: AWS Lambda (recommended — cheaper, serverless)
+
+Push to `main` → GitHub Actions → build zip → deploy Lambda + EventBridge schedule.
 
 ```bash
 git push  # that's it
 ```
 
-Runs on ECS Fargate (ap-southeast-1). Cron: `3 * * * *` inside container.
-Logs: CloudWatch → `/ecs/airdrop-bot`.
+Or deploy manually:
+```bash
+python scripts/build_lambda.py
+python scripts/deploy_lambda.py
+```
+
+Runs on AWS Lambda (ap-southeast-1). Triggered every hour by EventBridge Scheduler.
+Logs: CloudWatch → `/aws/lambda/airdrop-trading-bot`.
+
+**Cost:** ~$0.50–2/month vs ~$15–20/month for ECS Fargate.
+
+See [`LAMBDA_SETUP.md`](LAMBDA_SETUP.md) for a beginner-friendly setup guide.
+
+### Option B: ECS Fargate (legacy)
+
+The old Docker/ECS setup is preserved for rollback. See `docker-compose.yml` and `task-definition.json`.
 
 ## Project structure
 

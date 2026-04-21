@@ -3,6 +3,14 @@
 *.csv
 task-definition.json
 
+# Lambda build artifacts
+lambda_deps/
+.lambda_build/
+lambda_deployment.zip
+
+# Claude / AI tool directories
+.claude/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
