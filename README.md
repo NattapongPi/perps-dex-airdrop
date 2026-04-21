@@ -18,6 +18,13 @@ Position size: `(balance × risk_pct%) / (entry × sl_pct)`. Independent of leve
 
 All three can share one Hyperliquid wallet. Missing credentials = exchange skipped automatically.
 
+> **⚠️ Position sizing — diminishing capital:** `get_balance()` returns free balance
+> (after margin locked). Each hourly scan sizes new positions against whatever is
+> available at that moment. If 5 positions are already open and margin is locked,
+> later positions are sized off a smaller base — combined max loss across all
+> positions will be slightly less than `n × risk_pct%` of starting balance.
+> Acceptable for airdrop farming; reconsider if optimising for exact risk targets.
+
 > **⚠️ Hibachi — orphan orders:** Unlike Hyperliquid-based DEXes, Hibachi does not
 > auto-cancel reduce-only orders when a position closes. The bot cleans up orphan
 > TP/SL orders at the **start of the next scan** (~1h later). If price revisits the
