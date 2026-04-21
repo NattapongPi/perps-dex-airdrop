@@ -112,7 +112,7 @@ Logs: CloudWatch → `/aws/lambda/airdrop-trading-bot`.
 
 **Cost:** ~$0.50–2/month vs ~$15–20/month for ECS Fargate.
 
-See [`LAMBDA_SETUP.md`](LAMBDA_SETUP.md) for a beginner-friendly setup guide.
+See [`docs/lambda_setup.md`](docs/lambda_setup.md) for a beginner-friendly setup guide.
 
 ### Option B: ECS Fargate (legacy)
 
