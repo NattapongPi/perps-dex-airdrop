@@ -82,6 +82,11 @@ def load_env() -> dict[str, str]:
     return env
 
 
+def get_account_id() -> str:
+    out = aws_cli(["sts", "get-caller-identity"], capture=True)
+    return json.loads(out)["Account"]
+
+
 def create_execution_role() -> str:
     """Create or fetch the Lambda execution role ARN."""
     try:
