@@ -14,9 +14,15 @@ Position size: `(balance × risk_pct%) / (entry × sl_pct)`. Independent of leve
 |----------|---------|-------|
 | TradeXYZ | `XYZ-*` HIP-3 perps (USDC) | Isolated, max 10x |
 | DreamCash | `CASH-*` HIP-3 perps (USDT) | Isolated, max 10x, 0.045% builder fee for XP |
-| Hibachi | Crypto perps (USDT) | Separate API keys |
+| Hibachi | Crypto perps (USDT) | Separate API keys. See caution below. |
 
 All three can share one Hyperliquid wallet. Missing credentials = exchange skipped automatically.
+
+> **⚠️ Hibachi — orphan orders:** Unlike Hyperliquid-based DEXes, Hibachi does not
+> auto-cancel reduce-only orders when a position closes. The bot cleans up orphan
+> TP/SL orders at the **start of the next scan** (~1h later). If price revisits the
+> orphan TP level before cleanup, it will fill and open an unwanted new position.
+> Monitor open orders manually after an SL hit.
 
 ## Setup
 
