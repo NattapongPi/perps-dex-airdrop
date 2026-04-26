@@ -16,6 +16,7 @@ risk:
   atr_period: 14          # ATR lookback period
   atr_sl_multiplier: 1.5  # SL = entry - (ATR * this)
   atr_tp_multiplier: 2.0  # TP = entry + (ATR * this)
+  min_sl_pct: 0.001       # Skip trade if ATR-based SL is tighter than this (0.001 = 0.1%)
 
 position:
   max_concurrent: 10 # never open more than this many positions simultaneously

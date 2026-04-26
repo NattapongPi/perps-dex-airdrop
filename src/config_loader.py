@@ -59,6 +59,7 @@ class RiskConfig:
     atr_period: int
     atr_sl_multiplier: float
     atr_tp_multiplier: float
+    min_sl_pct: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -207,6 +208,7 @@ def load_config(config_path: Path = _CONFIG_PATH) -> Config:
             atr_period=int(risk_raw.get("atr_period", 14)),
             atr_sl_multiplier=float(risk_raw.get("atr_sl_multiplier", 1.5)),
             atr_tp_multiplier=float(risk_raw.get("atr_tp_multiplier", 2.0)),
+            min_sl_pct=float(risk_raw.get("min_sl_pct", 0.0)),
         ),
         position=PositionConfig(
             max_concurrent=int(position_raw.get("max_concurrent", 10)),

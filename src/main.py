@@ -132,6 +132,19 @@ def _run_exchange(
         )
         sl_pct, tp_pct = calculate_sl_tp_pct(entry_price, sl_price, tp_price)
 
+        min_sl_pct = risk_cfg.get("min_sl_pct", 0.0)
+        if sl_pct < min_sl_pct:
+            logger.info(
+                "SL too tight — skipping",
+                extra={
+                    "exchange": exchange_name,
+                    "symbol": symbol,
+                    "sl_pct": round(sl_pct * 100, 4),
+                    "min_sl_pct": round(min_sl_pct * 100, 4),
+                },
+            )
+            continue
+
         size = calculate_position_size(
             balance=balance,
             risk_pct=risk_cfg["risk_pct"],
