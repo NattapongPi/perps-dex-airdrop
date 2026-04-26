@@ -7,5 +7,7 @@ requests>=2.31
 ccxt>=4.0
 flask>=3.0
 pytest>=8.0
+coincurve>=20.0
+eth-account>=0.13
 mypy>=1.10
 ruff>=0.4

@@ -2,6 +2,13 @@
 # Each entry can be just the name (uses global params below)
 # or a dict with override blocks for strategy / risk / position.
 exchanges:
+  - dango:
+      position:
+        max_concurrent: 1
+      scan:
+        top_n: 1
+      risk:
+        risk_pct: 1.0
   - tradexyz:
       position:
         max_concurrent: 10

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from src.exchanges.dango import DangoAdapter
 from src.exchanges.dreamcash import DreamCashAdapter
 from src.exchanges.hibachi import HibachiAdapter
 from src.exchanges.hyperliquid import HyperliquidAdapter
@@ -26,6 +27,7 @@ REGISTRY: dict[str, type[ExchangeAdapter]] = {
     "tradexyz": TradeXYZAdapter,
     "dreamcash": DreamCashAdapter,
     "hibachi": HibachiAdapter,
+    "dango": DangoAdapter,
 }
 
 
