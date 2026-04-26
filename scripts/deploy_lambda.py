@@ -38,11 +38,15 @@ FUNCTION_NAME = os.environ.get("LAMBDA_FUNCTION_NAME", "airdrop-trading-bot")
 MEMORY = int(os.environ.get("LAMBDA_MEMORY", "512"))
 TIMEOUT = int(os.environ.get("LAMBDA_TIMEOUT", "300"))
 SCHEDULE_NAME = os.environ.get("SCHEDULE_NAME", "airdrop-trading-bot-hourly")
+LAMBDA_S3_BUCKET = os.environ.get("LAMBDA_S3_BUCKET", "")
 RUNTIME = "python3.12"
 HANDLER = "src.lambda_handler.handler"
 
 ROLE_NAME = f"{FUNCTION_NAME}-execution-role"
 SCHEDULER_ROLE_NAME = f"{FUNCTION_NAME}-scheduler-role"
+
+# AWS Lambda direct zip upload limit is 50 MB (zipped)
+ZIP_SIZE_LIMIT = 50 * 1024 * 1024
 
 
 def aws_cli(cmd: list[str], capture: bool = False) -> str:
@@ -85,6 +89,36 @@ def load_env() -> dict[str, str]:
 def get_account_id() -> str:
     out = aws_cli(["sts", "get-caller-identity"], capture=True)
     return json.loads(out)["Account"]
+
+
+def get_s3_bucket_name() -> str:
+    """Return the S3 bucket name for Lambda deployment packages."""
+    if LAMBDA_S3_BUCKET:
+        return LAMBDA_S3_BUCKET
+    account_id = get_account_id()
+    # Bucket names must be globally unique and DNS-compliant
+    return f"{FUNCTION_NAME}-deploy-{account_id}-{AWS_REGION}".replace("_", "-")
+
+
+def ensure_s3_bucket(bucket: str) -> None:
+    """Create the S3 bucket if it doesn't exist."""
+    try:
+        aws_cli(["s3api", "head-bucket", "--bucket", bucket], capture=True)
+        print(f"S3 bucket exists: {bucket}")
+    except subprocess.CalledProcessError:
+        print(f"Creating S3 bucket: {bucket}")
+        cmd = ["s3api", "create-bucket", "--bucket", bucket]
+        if AWS_REGION != "us-east-1":
+            cmd += [
+                "--create-bucket-configuration",
+                f"LocationConstraint={AWS_REGION}",
+            ]
+        aws_cli(cmd)
+
+
+def upload_to_s3(bucket: str, key: str, file_path: Path) -> None:
+    """Upload a file to S3."""
+    aws_cli(["s3", "cp", str(file_path), f"s3://{bucket}/{key}"])
 
 
 def create_execution_role() -> str:
@@ -156,18 +190,44 @@ def create_or_update_lambda(role_arn: str) -> str:
         print(f"ERROR: {ZIP_FILE} not found. Run scripts/build_lambda.py first.")
         sys.exit(1)
 
+    zip_size = ZIP_FILE.stat().st_size
+    use_s3 = zip_size > ZIP_SIZE_LIMIT
+
+    s3_bucket = None
+    s3_key = None
+    if use_s3:
+        s3_bucket = get_s3_bucket_name()
+        s3_key = f"{FUNCTION_NAME}/lambda_deployment.zip"
+        ensure_s3_bucket(s3_bucket)
+        upload_to_s3(s3_bucket, s3_key, ZIP_FILE)
+        print(f"Using S3 deployment package (s3://{s3_bucket}/{s3_key})")
+
     if function_exists(FUNCTION_NAME):
         print(f"Updating existing Lambda: {FUNCTION_NAME}")
-        aws_cli(
-            [
-                "lambda",
-                "update-function-code",
-                "--function-name",
-                FUNCTION_NAME,
-                "--zip-file",
-                f"fileb://{ZIP_FILE}",
-            ]
-        )
+        if use_s3:
+            aws_cli(
+                [
+                    "lambda",
+                    "update-function-code",
+                    "--function-name",
+                    FUNCTION_NAME,
+                    "--s3-bucket",
+                    s3_bucket,
+                    "--s3-key",
+                    s3_key,
+                ]
+            )
+        else:
+            aws_cli(
+                [
+                    "lambda",
+                    "update-function-code",
+                    "--function-name",
+                    FUNCTION_NAME,
+                    "--zip-file",
+                    f"fileb://{ZIP_FILE}",
+                ]
+            )
         print("Waiting 10s for code update to settle...")
         time.sleep(10)
         update_cmd = [
@@ -191,24 +251,44 @@ def create_or_update_lambda(role_arn: str) -> str:
         aws_cli(update_cmd)
     else:
         print(f"Creating new Lambda: {FUNCTION_NAME}")
-        create_cmd = [
-            "lambda",
-            "create-function",
-            "--function-name",
-            FUNCTION_NAME,
-            "--runtime",
-            RUNTIME,
-            "--role",
-            role_arn,
-            "--handler",
-            HANDLER,
-            "--memory-size",
-            str(MEMORY),
-            "--timeout",
-            str(TIMEOUT),
-            "--zip-file",
-            f"fileb://{ZIP_FILE}",
-        ]
+        if use_s3:
+            create_cmd = [
+                "lambda",
+                "create-function",
+                "--function-name",
+                FUNCTION_NAME,
+                "--runtime",
+                RUNTIME,
+                "--role",
+                role_arn,
+                "--handler",
+                HANDLER,
+                "--memory-size",
+                str(MEMORY),
+                "--timeout",
+                str(TIMEOUT),
+                "--code",
+                f"S3Bucket={s3_bucket},S3Key={s3_key}",
+            ]
+        else:
+            create_cmd = [
+                "lambda",
+                "create-function",
+                "--function-name",
+                FUNCTION_NAME,
+                "--runtime",
+                RUNTIME,
+                "--role",
+                role_arn,
+                "--handler",
+                HANDLER,
+                "--memory-size",
+                str(MEMORY),
+                "--timeout",
+                str(TIMEOUT),
+                "--zip-file",
+                f"fileb://{ZIP_FILE}",
+            ]
         if env_json:
             create_cmd += ["--environment", env_json]
         aws_cli(create_cmd)

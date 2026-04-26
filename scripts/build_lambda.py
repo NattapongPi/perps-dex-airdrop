@@ -81,23 +81,6 @@ def install_deps() -> None:
     subprocess.check_call(cmd)
 
 
-def strip_unnecessary_files() -> None:
-    """Remove files not needed at runtime to keep package size down."""
-    print("Stripping unnecessary files...")
-    # ccxt async/pro — we only use sync API
-    for path in (BUILD_DIR / "ccxt" / "async_support", BUILD_DIR / "ccxt" / "pro"):
-        if path.exists():
-            shutil.rmtree(path)
-            print(f"  Removed {path.relative_to(BUILD_DIR)}")
-
-    # Local __pycache__ and .pyc files
-    for pyc in BUILD_DIR.rglob("__pycache__"):
-        if pyc.is_dir():
-            shutil.rmtree(pyc)
-    for pyc in BUILD_DIR.rglob("*.pyc"):
-        pyc.unlink()
-
-
 def copy_source() -> None:
     """Copy application source and config into the build directory."""
     print("Copying source code...")
@@ -108,6 +91,56 @@ def copy_source() -> None:
         shutil.copytree(src_dir, BUILD_DIR / "src")
     if config_dir.exists():
         shutil.copytree(config_dir, BUILD_DIR / "config")
+
+
+def strip_unnecessary_files() -> None:
+    """Remove files not needed at runtime to keep package size down."""
+    print("Stripping unnecessary files...")
+
+    # ccxt async/pro — we only use sync API
+    for path in (BUILD_DIR / "ccxt" / "async_support", BUILD_DIR / "ccxt" / "pro"):
+        if path.exists():
+            shutil.rmtree(path)
+            print(f"  Removed {path.relative_to(BUILD_DIR)}")
+
+    # Remove test directories from installed packages
+    for pattern in ("test", "tests"):
+        for path in list(BUILD_DIR.rglob(pattern)):
+            if path.is_dir():
+                shutil.rmtree(path)
+
+    # Remove documentation and examples
+    for pattern in ("docs", "doc", "examples", "benchmarks", "html"):
+        for path in list(BUILD_DIR.rglob(pattern)):
+            if path.is_dir():
+                shutil.rmtree(path)
+
+    # Remove stub files
+    for path in list(BUILD_DIR.rglob("*.pyi")):
+        path.unlink()
+
+    # Remove Cython source files included in some wheels
+    for path in list(BUILD_DIR.rglob("*.pyx")):
+        path.unlink()
+
+    # Remove __pycache__ and compiled Python files
+    for pyc in list(BUILD_DIR.rglob("__pycache__")):
+        if pyc.is_dir():
+            shutil.rmtree(pyc)
+    for pyc in list(BUILD_DIR.rglob("*.pyc")):
+        pyc.unlink()
+
+    # Strip debug symbols from .so files on Linux to reduce size
+    if sys.platform != "win32":
+        for so in BUILD_DIR.rglob("*.so"):
+            try:
+                subprocess.run(
+                    ["strip", "--strip-debug", str(so)],
+                    check=False,
+                    capture_output=True,
+                )
+            except Exception:
+                pass
 
 
 def create_zip() -> None:
@@ -129,8 +162,8 @@ def create_zip() -> None:
 def main() -> None:
     clean()
     install_deps()
-    strip_unnecessary_files()
     copy_source()
+    strip_unnecessary_files()
     create_zip()
     # Clean up build artifacts
     shutil.rmtree(BUILD_DIR)
