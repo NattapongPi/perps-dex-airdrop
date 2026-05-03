@@ -22,7 +22,7 @@ exchanges:
   - hibachi:
       position:
         max_concurrent: 7
-        clear_positions_on_startup: true
+        clear_positions_on_startup: false
       scan:
         top_n: 7
 

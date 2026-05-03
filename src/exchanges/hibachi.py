@@ -144,6 +144,16 @@ class HibachiAdapter(ExchangeAdapter):
         balance = self._exchange.fetch_balance()
         return float(balance.get("USDT", {}).get("free", 0))
 
+    def _cancel_orders_safe(self, symbol: str, order_ids: list) -> None:
+        """Best-effort cancel of order ids; swallows errors."""
+        for oid in order_ids:
+            if not oid:
+                continue
+            try:
+                self._exchange.cancel_order(oid, symbol)
+            except Exception:
+                pass
+
     def place_order(
         self,
         symbol: str,
@@ -155,7 +165,7 @@ class HibachiAdapter(ExchangeAdapter):
         """
         Place a market entry, then attach TP and SL as standalone orders.
 
-        CCXT's Hibachi driver does not support parentOrder or triggerDirection,
+        CCXT's Hibachi driver does not support parentOrder or OCO,
         so TP and SL are placed as independent orders after the entry fills.
         They will not auto-cancel if the entry is cancelled before filling.
 
@@ -163,6 +173,9 @@ class HibachiAdapter(ExchangeAdapter):
           1. Market BID entry  — fills at actual_entry
           2. Limit ASK TP      — price = actual_entry * (1 + tp_pct)
           3. Trigger ASK SL    — triggerPrice = actual_entry * (1 - sl_pct)
+
+        If TP or SL placement fails, the entry order (and any placed orders)
+        are cancelled so the position is never left naked.
         """
         is_buy = side == "buy"
         close_side = "sell" if is_buy else "buy"
@@ -217,30 +230,42 @@ class HibachiAdapter(ExchangeAdapter):
         tp_price = actual_entry * (1 + tp_pct) if is_buy else actual_entry * (1 - tp_pct)
         sl_price = actual_entry * (1 - sl_pct) if is_buy else actual_entry * (1 + sl_pct)
 
+        placed_order_ids = [order_id]
+
         # --- 2. TP — standalone reduce-only limit order ---
-        self._exchange.create_order(
-            symbol=symbol,
-            type="limit",
-            side=close_side,
-            amount=filled_size,
-            price=tp_price,
-            params={"reduceOnly": True},
-        )
+        try:
+            tp_resp = self._exchange.create_order(
+                symbol=symbol,
+                type="limit",
+                side=close_side,
+                amount=filled_size,
+                price=tp_price,
+                params={"reduceOnly": True},
+            )
+            placed_order_ids.append(tp_resp.get("id"))
+        except Exception as exc:
+            _logger.error("TP placement failed for %s: %s", symbol, exc)
+            self._cancel_orders_safe(symbol, placed_order_ids)
+            raise RuntimeError(f"TP placement failed for {symbol}: {exc}") from exc
 
         # --- 3. SL — standalone reduce-only trigger market order ---
-        # triggerDirection is required by Hibachi whenever triggerPrice is set.
-        # Long SL fires when price drops BELOW sl_price; short SL fires ABOVE.
-        self._exchange.create_order(
-            symbol=symbol,
-            type="market",
-            side=close_side,
-            amount=filled_size,
-            params={
-                "reduceOnly": True,
-                "triggerPrice": sl_price,
-                "triggerDirection": "LOW" if is_buy else "HIGH",
-            },
-        )
+        # Hibachi infers trigger direction from triggerPrice relative to market.
+        try:
+            sl_resp = self._exchange.create_order(
+                symbol=symbol,
+                type="market",
+                side=close_side,
+                amount=filled_size,
+                params={
+                    "reduceOnly": True,
+                    "triggerPrice": sl_price,
+                },
+            )
+            placed_order_ids.append(sl_resp.get("id"))
+        except Exception as exc:
+            _logger.error("SL placement failed for %s: %s", symbol, exc)
+            self._cancel_orders_safe(symbol, placed_order_ids)
+            raise RuntimeError(f"SL placement failed for {symbol}: {exc}") from exc
 
         return OrderResult(
             order_id=str(entry_order.get("id", "unknown")),
