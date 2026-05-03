@@ -242,7 +242,12 @@ class HibachiAdapter(ExchangeAdapter):
                 price=tp_price,
                 params={"reduceOnly": True},
             )
-            placed_order_ids.append(tp_resp.get("id"))
+            tp_id = tp_resp.get("id")
+            placed_order_ids.append(tp_id)
+            _logger.info(
+                "Hibachi TP placed — %s %s @ %s (id=%s)",
+                symbol, close_side, tp_price, tp_id,
+            )
         except Exception as exc:
             _logger.error("TP placement failed for %s: %s", symbol, exc)
             self._cancel_orders_safe(symbol, placed_order_ids)
@@ -261,7 +266,12 @@ class HibachiAdapter(ExchangeAdapter):
                     "triggerPrice": sl_price,
                 },
             )
-            placed_order_ids.append(sl_resp.get("id"))
+            sl_id = sl_resp.get("id")
+            placed_order_ids.append(sl_id)
+            _logger.info(
+                "Hibachi SL placed — %s %s trigger=%s (id=%s)",
+                symbol, close_side, sl_price, sl_id,
+            )
         except Exception as exc:
             _logger.error("SL placement failed for %s: %s", symbol, exc)
             self._cancel_orders_safe(symbol, placed_order_ids)
@@ -318,18 +328,31 @@ class HibachiAdapter(ExchangeAdapter):
         """
         open_syms = {p.symbol for p in open_positions}
         open_orders = self._exchange.fetch_open_orders()
+        _logger.info(
+            "Hibachi orphan check — open_positions=%s open_orders=%s",
+            len(open_positions), len(open_orders),
+        )
         cancelled = 0
         for order in open_orders:
-            if order["symbol"] not in open_syms:
+            sym = order.get("symbol", "unknown")
+            oid = order.get("id", "unknown")
+            otype = order.get("type", "unknown")
+            oside = order.get("side", "unknown")
+            if sym not in open_syms:
                 try:
-                    self._exchange.cancel_order(order["id"], order["symbol"])
+                    self._exchange.cancel_order(oid, sym)
                     _logger.info(
-                        "Cancelled orphan order %s for %s (no open position)",
-                        order["id"], order["symbol"],
+                        "Hibachi cancelled orphan — %s %s (type=%s, id=%s)",
+                        sym, oside, otype, oid,
                     )
                     cancelled += 1
                 except Exception as exc:
-                    _logger.warning("Failed to cancel orphan order %s: %s", order["id"], exc)
+                    _logger.warning("Failed to cancel orphan %s: %s", oid, exc)
+            else:
+                _logger.info(
+                    "Hibachi order kept — %s %s (type=%s, id=%s)",
+                    sym, oside, otype, oid,
+                )
         return cancelled
 
     def ping(self) -> bool:
