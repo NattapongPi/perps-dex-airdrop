@@ -22,6 +22,7 @@ Quote currency is USDT (not USDC).
 from __future__ import annotations
 
 import logging
+from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING
 
 _logger = logging.getLogger(__name__)
@@ -154,6 +155,23 @@ class HibachiAdapter(ExchangeAdapter):
             except Exception:
                 pass
 
+    def _price_to_tick(self, symbol: str, price: float) -> str:
+        """
+        Round price to Hibachi's tick size.
+
+        CCXT's ``precision.price`` for Hibachi reflects the internal fixed-point
+        representation, not the human-readable tick size. The real tick size is
+        in ``market['info']['tickSize']``.
+        """
+        market = self._exchange.market(symbol)
+        tick_size = market.get("info", {}).get("tickSize")
+        if not tick_size:
+            return str(price)
+        tick = Decimal(str(tick_size))
+        p = Decimal(str(price))
+        rounded = (p / tick).to_integral_value(rounding=ROUND_HALF_UP) * tick
+        return str(rounded.normalize())
+
     def place_order(
         self,
         symbol: str,
@@ -227,8 +245,10 @@ class HibachiAdapter(ExchangeAdapter):
             )
 
         filled_size = float(entry_order.get("filled") or size)
-        tp_price = actual_entry * (1 + tp_pct) if is_buy else actual_entry * (1 - tp_pct)
-        sl_price = actual_entry * (1 - sl_pct) if is_buy else actual_entry * (1 + sl_pct)
+        tp_price_raw = actual_entry * (1 + tp_pct) if is_buy else actual_entry * (1 - tp_pct)
+        sl_price_raw = actual_entry * (1 - sl_pct) if is_buy else actual_entry * (1 + sl_pct)
+        tp_price = self._price_to_tick(symbol, tp_price_raw)
+        sl_price = self._price_to_tick(symbol, sl_price_raw)
 
         placed_order_ids = [order_id]
 
@@ -283,8 +303,8 @@ class HibachiAdapter(ExchangeAdapter):
             side=side,
             size=filled_size,
             entry_price=actual_entry,
-            tp_price=tp_price,
-            sl_price=sl_price,
+            tp_price=float(tp_price),
+            sl_price=float(sl_price),
             status=entry_order.get("status", "open"),
         )
 

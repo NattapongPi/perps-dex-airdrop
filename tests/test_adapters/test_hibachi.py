@@ -193,3 +193,20 @@ class TestHibachiCloseAllPositions:
         closed = adp.close_all_positions()
         assert closed == 2
         assert mock_ex.create_order.call_count == 2
+
+
+class TestHibachiPriceToTick:
+    def test_rounds_to_tick_size(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.market.return_value = {"info": {"tickSize": "0.00001"}}
+        assert adp._price_to_tick("XRP/USDT:USDT", 1.3958574) == "1.39586"
+
+    def test_rounds_btc_to_ten_cents(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.market.return_value = {"info": {"tickSize": "0.1"}}
+        assert adp._price_to_tick("BTC/USDT:USDT", 78546.12345) == "78546.1"
+
+    def test_fallback_when_no_tick_size(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.market.return_value = {"info": {}}
+        assert adp._price_to_tick("BTC/USDT:USDT", 78546.12345) == "78546.12345"
