@@ -274,7 +274,8 @@ class HibachiAdapter(ExchangeAdapter):
             raise RuntimeError(f"TP placement failed for {symbol}: {exc}") from exc
 
         # --- 3. SL — standalone reduce-only trigger market order ---
-        # Hibachi infers trigger direction from triggerPrice relative to market.
+        # Hibachi requires triggerDirection whenever triggerPrice is set.
+        # Long SL fires when price drops BELOW sl_price; short SL fires ABOVE.
         try:
             sl_resp = self._exchange.create_order(
                 symbol=symbol,
@@ -284,6 +285,7 @@ class HibachiAdapter(ExchangeAdapter):
                 params={
                     "reduceOnly": True,
                     "triggerPrice": sl_price,
+                    "triggerDirection": "LOW" if is_buy else "HIGH",
                 },
             )
             sl_id = sl_resp.get("id")
