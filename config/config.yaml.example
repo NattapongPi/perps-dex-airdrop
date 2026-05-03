@@ -20,6 +20,7 @@ risk:
 
 position:
   max_concurrent: 10 # never open more than this many positions simultaneously
+  clear_positions_on_startup: false # if true, close all positions at start of each run
 
 logging:
   level: INFO        # DEBUG | INFO | WARNING | ERROR

@@ -90,9 +90,26 @@ def _run_exchange(
         },
     )
 
-    cancelled = exchange.cancel_orphan_orders(open_positions)
-    if cancelled:
-        logger.info("Cancelled orphan orders", extra={"exchange": exchange_name, "count": cancelled})
+    if position_cfg.get("clear_positions_on_startup") and not config.dry_run:
+        closed = exchange.close_all_positions()
+        if closed:
+            logger.info("Closed all positions", extra={"exchange": exchange_name, "count": closed})
+        # Cancel every remaining open order (no positions = all orders are orphans)
+        cancelled = exchange.cancel_orphan_orders([])
+        if cancelled:
+            logger.info("Cancelled remaining orders", extra={"exchange": exchange_name, "count": cancelled})
+        # Re-fetch state after clearing
+        try:
+            open_positions = exchange.get_open_positions()
+            open_symbols = {p.symbol for p in open_positions}
+            balance = exchange.get_balance()
+        except Exception as exc:
+            logger.error("Failed to re-fetch account state after clearing", extra={"exchange": exchange_name, "error": str(exc)})
+            return 0
+    else:
+        cancelled = exchange.cancel_orphan_orders(open_positions)
+        if cancelled:
+            logger.info("Cancelled orphan orders", extra={"exchange": exchange_name, "count": cancelled})
 
     orders_placed = 0
     max_concurrent = position_cfg["max_concurrent"]

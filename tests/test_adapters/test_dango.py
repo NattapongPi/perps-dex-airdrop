@@ -322,6 +322,12 @@ class TestDangoPlaceOrder:
         assert tx["sender"] == "0xaaaa1111bbbb2222cccc3333dddd4444eeee5555"
 
 
+class TestDangoCloseAllPositions:
+    def test_default_noop(self, adapter):
+        adp, _ = adapter
+        assert adp.close_all_positions() == 0
+
+
 class TestDangoCancelOrphanOrders:
     def test_default_noop(self, adapter):
         adp, _ = adapter

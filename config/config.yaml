@@ -22,6 +22,7 @@ exchanges:
   - hibachi:
       position:
         max_concurrent: 7
+        clear_positions_on_startup: true
       scan:
         top_n: 7
 
@@ -44,6 +45,7 @@ risk:
 
 position:
   max_concurrent: 5
+  clear_positions_on_startup: false
 
 logging:
   level: INFO

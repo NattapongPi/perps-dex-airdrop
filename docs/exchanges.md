@@ -81,6 +81,7 @@ Standalone adapter (does **not** inherit `CcxtAdapter`).
 - Uses `ccxt.hibachi()` for private ops
 - Public market data from Hibachi REST API (`data-api.hibachi.xyz`)
 - **Critical difference:** Hibachi does **not** auto-cancel reduce-only orders when a position closes. `cancel_orphan_orders()` is overridden to clean up orphan TP/SL orders at the start of each scan.
+- `close_all_positions()` is implemented to flatten all positions at market price (used when `clear_positions_on_startup` is enabled).
 - TP/SL are placed as **standalone independent orders** (no parent order support)
 
 ## Registry (`__init__.py`)

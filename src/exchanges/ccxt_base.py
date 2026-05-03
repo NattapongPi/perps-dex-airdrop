@@ -14,15 +14,18 @@ To add a new Hyperliquid-compatible exchange:
 from __future__ import annotations
 
 from abc import ABC
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import ccxt
+import logging
 import pandas as pd
 
 from src.exchanges.base import ExchangeAdapter, OrderResult, Position
 
 if TYPE_CHECKING:
     pass
+
+_logger = logging.getLogger(__name__)
 
 
 class CcxtAdapter(ExchangeAdapter, ABC):
@@ -263,6 +266,32 @@ class CcxtAdapter(ExchangeAdapter, ABC):
             sl_price=sl_price,
             status=entry_order.get("status", "open"),
         )
+
+    def close_all_positions(self) -> int:
+        """
+        Close all open positions at market price.
+
+        Places a reduce-only market order on the opposite side for each position.
+        """
+        positions = self.get_open_positions()
+        closed = 0
+        for pos in positions:
+            close_side = "sell" if pos.side == "long" else "buy"
+            try:
+                self._exchange.create_order(
+                    symbol=pos.symbol,
+                    type="market",
+                    side=close_side,
+                    amount=pos.size,
+                    params={"reduceOnly": True},
+                )
+                closed += 1
+            except Exception as exc:
+                _logger.error(
+                    "Failed to close position %s: %s",
+                    pos.symbol, exc,
+                )
+        return closed
 
     def ping(self) -> bool:
         """Lightweight connectivity check via fetch_tickers."""

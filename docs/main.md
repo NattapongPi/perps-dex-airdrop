@@ -19,8 +19,9 @@ Stateless scan loop designed to run once per hour.
    - `get_top_coins(n)` — scan candidates
    - `get_open_positions()` — existing positions
    - `get_balance()` — free collateral
-4. `cancel_orphan_orders()` — clean up stale TP/SL (critical for Hibachi)
-5. Iterate top coins:
+4. If `clear_positions_on_startup` is enabled: close all positions at market, then cancel all remaining open orders, and re-fetch account state
+5. Otherwise: `cancel_orphan_orders()` — clean up stale TP/SL (critical for Hibachi)
+6. Iterate top coins:
    - Skip if max concurrent positions reached
    - Skip if already have a position in this symbol
    - Fetch OHLCV → `TrendFilter.evaluate()`

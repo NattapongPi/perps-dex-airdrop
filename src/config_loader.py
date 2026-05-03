@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -65,6 +65,7 @@ class RiskConfig:
 @dataclass(frozen=True)
 class PositionConfig:
     max_concurrent: int
+    clear_positions_on_startup: bool = False
 
 
 @dataclass(frozen=True)
@@ -212,6 +213,7 @@ def load_config(config_path: Path = _CONFIG_PATH) -> Config:
         ),
         position=PositionConfig(
             max_concurrent=int(position_raw.get("max_concurrent", 10)),
+            clear_positions_on_startup=bool(position_raw.get("clear_positions_on_startup", False)),
         ),
         logging=LoggingConfig(
             level=str(logging_raw.get("level", "INFO")).upper(),

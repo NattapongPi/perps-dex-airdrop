@@ -121,6 +121,17 @@ class ExchangeAdapter(ABC):
         Used by the healthcheck endpoint.
         """
 
+    def close_all_positions(self) -> int:
+        """
+        Close all open positions at market price.
+
+        Called at startup when `clear_positions_on_startup` is enabled.
+        Default is a no-op — override in adapters that support it.
+
+        Returns the number of positions closed.
+        """
+        return 0
+
     def cancel_orphan_orders(self, open_positions: list[Position]) -> int:
         """
         Cancel open orders for symbols that have no open position.

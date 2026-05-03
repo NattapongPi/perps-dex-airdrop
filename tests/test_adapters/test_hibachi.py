@@ -144,3 +144,52 @@ class TestHibachiGetPositions:
         positions = adp.get_open_positions()
         assert len(positions) == 1
         assert positions[0].symbol == "ETH/USDT:USDT"
+
+
+class TestHibachiCloseAllPositions:
+    def test_closes_long_with_sell_reduce_only(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.fetch_positions.return_value = [
+            {"symbol": "BTC/USDT:USDT", "contracts": 1.0, "side": "long", "entryPrice": 70000},
+        ]
+        closed = adp.close_all_positions()
+        assert closed == 1
+        mock_ex.create_order.assert_called_once_with(
+            symbol="BTC/USDT:USDT",
+            type="market",
+            side="sell",
+            amount=1.0,
+            params={"reduceOnly": True},
+        )
+
+    def test_closes_short_with_buy_reduce_only(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.fetch_positions.return_value = [
+            {"symbol": "ETH/USDT:USDT", "contracts": 2.0, "side": "short", "entryPrice": 2000},
+        ]
+        closed = adp.close_all_positions()
+        assert closed == 1
+        mock_ex.create_order.assert_called_once_with(
+            symbol="ETH/USDT:USDT",
+            type="market",
+            side="buy",
+            amount=2.0,
+            params={"reduceOnly": True},
+        )
+
+    def test_returns_zero_when_no_positions(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.fetch_positions.return_value = []
+        closed = adp.close_all_positions()
+        assert closed == 0
+        mock_ex.create_order.assert_not_called()
+
+    def test_counts_multiple_positions(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.fetch_positions.return_value = [
+            {"symbol": "BTC/USDT:USDT", "contracts": 1.0, "side": "long", "entryPrice": 70000},
+            {"symbol": "ETH/USDT:USDT", "contracts": 2.0, "side": "short", "entryPrice": 2000},
+        ]
+        closed = adp.close_all_positions()
+        assert closed == 2
+        assert mock_ex.create_order.call_count == 2

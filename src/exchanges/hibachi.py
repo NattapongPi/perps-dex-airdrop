@@ -253,6 +253,36 @@ class HibachiAdapter(ExchangeAdapter):
             status=entry_order.get("status", "open"),
         )
 
+    def close_all_positions(self) -> int:
+        """
+        Close all open positions at market price.
+
+        Places a reduce-only market order on the opposite side for each position.
+        """
+        positions = self.get_open_positions()
+        closed = 0
+        for pos in positions:
+            close_side = "sell" if pos.side == "long" else "buy"
+            try:
+                self._exchange.create_order(
+                    symbol=pos.symbol,
+                    type="market",
+                    side=close_side,
+                    amount=pos.size,
+                    params={"reduceOnly": True},
+                )
+                _logger.info(
+                    "Closed position %s %s (size %s)",
+                    pos.side, pos.symbol, pos.size,
+                )
+                closed += 1
+            except Exception as exc:
+                _logger.error(
+                    "Failed to close position %s: %s",
+                    pos.symbol, exc,
+                )
+        return closed
+
     def cancel_orphan_orders(self, open_positions) -> int:
         """
         Cancel open orders for symbols with no open position.
