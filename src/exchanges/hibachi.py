@@ -118,10 +118,40 @@ class HibachiAdapter(ExchangeAdapter):
         df.index = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
         return df[["open", "high", "low", "close", "volume"]].sort_index()
 
+    def _resolve_entry_price(self, raw_position: dict) -> float:
+        """Resolve entry price from CCXT position dict, trying multiple sources."""
+        # 1. Unified CCXT field
+        price = raw_position.get("entryPrice")
+        if price is not None and float(price) > 0:
+            return float(price)
+
+        # 2. Raw exchange response fields
+        info = raw_position.get("info", {})
+        for key in ("avgEntryPrice", "entryPx", "entry_price", "avg_entry_price"):
+            val = info.get(key)
+            if val is not None and float(val) > 0:
+                return float(val)
+
+        # 3. Emergency fallback: markPrice so downstream doesn't crash with 0.0
+        mark = raw_position.get("markPrice")
+        if mark is not None and float(mark) > 0:
+            symbol = raw_position.get("symbol", "unknown")
+            _logger.error(
+                "Hibachi position %s missing entryPrice; using markPrice=%s as fallback. "
+                "Raw position: %s",
+                symbol, mark, raw_position,
+            )
+            return float(mark)
+
+        return 0.0
+
     def get_open_positions(self) -> list[Position]:
         """
         Fetch open positions via CCXT fetch_positions.
         Only returns positions with non-zero size.
+
+        Positions with a missing or zero entry price are logged as errors
+        and skipped — we never silently fall back to 0.0.
         """
         raw_positions = self._exchange.fetch_positions()
         positions = []
@@ -130,11 +160,19 @@ class HibachiAdapter(ExchangeAdapter):
             if size == 0:
                 continue
             side = "long" if p.get("side") == "long" else "short"
+            entry_price = self._resolve_entry_price(p)
+            if entry_price <= 0:
+                _logger.error(
+                    "Hibachi position %s has no valid entry price (entryPrice / "
+                    "markPrice both missing). Raw position: %s",
+                    p.get("symbol", "unknown"), p,
+                )
+                continue
             positions.append(Position(
                 symbol=p["symbol"],
                 side=side,
                 size=size,
-                entry_price=float(p.get("entryPrice") or 0),
+                entry_price=entry_price,
             ))
         return positions
 

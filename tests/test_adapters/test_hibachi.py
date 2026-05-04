@@ -145,6 +145,43 @@ class TestHibachiGetPositions:
         assert len(positions) == 1
         assert positions[0].symbol == "ETH/USDT:USDT"
 
+    def test_uses_markprice_when_entryprice_missing(self, adapter, caplog):
+        import logging
+        adp, _, mock_ex = adapter
+        mock_ex.fetch_positions.return_value = [
+            {"symbol": "BTC/USDT:USDT", "contracts": 1.0, "side": "long", "markPrice": 70000},
+        ]
+        with caplog.at_level(logging.ERROR):
+            positions = adp.get_open_positions()
+        assert len(positions) == 1
+        assert positions[0].entry_price == 70000.0
+        assert "missing entryPrice" in caplog.text
+
+    def test_skips_when_entryprice_and_markprice_missing(self, adapter, caplog):
+        import logging
+        adp, _, mock_ex = adapter
+        mock_ex.fetch_positions.return_value = [
+            {"symbol": "BTC/USDT:USDT", "contracts": 1.0, "side": "long"},
+        ]
+        with caplog.at_level(logging.ERROR):
+            positions = adp.get_open_positions()
+        assert len(positions) == 0
+        assert "no valid entry price" in caplog.text
+
+    def test_falls_back_to_raw_info_fields(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.fetch_positions.return_value = [
+            {
+                "symbol": "ETH/USDT:USDT",
+                "contracts": 2.0,
+                "side": "short",
+                "info": {"avgEntryPrice": "2100.5"},
+            },
+        ]
+        positions = adp.get_open_positions()
+        assert len(positions) == 1
+        assert positions[0].entry_price == 2100.5
+
 
 class TestHibachiCloseAllPositions:
     def test_closes_long_with_sell_reduce_only(self, adapter):
