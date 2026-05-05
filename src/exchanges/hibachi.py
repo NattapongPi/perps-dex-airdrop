@@ -127,13 +127,15 @@ class HibachiAdapter(ExchangeAdapter):
 
         # 2. Raw exchange response fields
         info = raw_position.get("info", {})
-        for key in ("avgEntryPrice", "entryPx", "entry_price", "avg_entry_price"):
+        for key in ("avgEntryPrice", "entryPx", "entry_price", "avg_entry_price", "openPrice"):
             val = info.get(key)
             if val is not None and float(val) > 0:
                 return float(val)
 
         # 3. Emergency fallback: markPrice so downstream doesn't crash with 0.0
         mark = raw_position.get("markPrice")
+        if mark is None:
+            mark = info.get("markPrice")
         if mark is not None and float(mark) > 0:
             symbol = raw_position.get("symbol", "unknown")
             _logger.error(
@@ -159,7 +161,12 @@ class HibachiAdapter(ExchangeAdapter):
             size = abs(float(p.get("contracts") or 0))
             if size == 0:
                 continue
-            side = "long" if p.get("side") == "long" else "short"
+            info = p.get("info", {})
+            side = (
+                "long"
+                if (p.get("side") == "long" or info.get("direction", "").lower() == "long")
+                else "short"
+            )
             entry_price = self._resolve_entry_price(p)
             if entry_price <= 0:
                 _logger.error(
@@ -208,7 +215,7 @@ class HibachiAdapter(ExchangeAdapter):
         tick = Decimal(str(tick_size))
         p = Decimal(str(price))
         rounded = (p / tick).to_integral_value(rounding=ROUND_HALF_UP) * tick
-        return str(rounded.normalize())
+        return format(rounded, "f")
 
     def place_order(
         self,
@@ -247,39 +254,56 @@ class HibachiAdapter(ExchangeAdapter):
         # Hibachi's create_order always returns {id, status:'pending'} with no
         # price. fetch_order populates price/filled once the order is FILLED.
         order_id = entry_order.get("id")
-        entry_order = self._exchange.fetch_order(order_id, symbol)
-        actual_entry = float(
-            entry_order.get("average")
-            or entry_order.get("price")
-            or entry_order.get("info", {}).get("avgPx", 0)
-        )
-        if actual_entry:
-            _logger.debug("Entry price resolved via fetch_order for %s: %s", symbol, actual_entry)
+        actual_entry = 0.0
+        try:
+            entry_order = self._exchange.fetch_order(order_id, symbol)
+            actual_entry = float(
+                entry_order.get("average")
+                or entry_order.get("price")
+                or entry_order.get("info", {}).get("avgPx", 0)
+                or 0
+            )
+            if actual_entry:
+                _logger.debug("Entry price resolved via fetch_order for %s: %s", symbol, actual_entry)
+        except Exception as exc:
+            _logger.warning("fetch_order failed for %s (%s): %s", symbol, order_id, exc)
 
         # Fallback 1: fetch_my_trades matched by order_id.
         # CCXT normalises bidOrderId/askOrderId into the "order" field for both sides.
         if not actual_entry:
-            _logger.warning(
-                "Entry price not in fetch_order for %s, falling back to fetch_my_trades",
-                symbol,
-            )
-            trades = self._exchange.fetch_my_trades(symbol, limit=5)
-            matching = [t for t in trades if t.get("order") == order_id]
-            if matching:
-                actual_entry = float(matching[-1]["price"])
-                _logger.warning("Entry price resolved via fetch_my_trades for %s: %s", symbol, actual_entry)
+            try:
+                _logger.warning(
+                    "Entry price not in fetch_order for %s, falling back to fetch_my_trades",
+                    symbol,
+                )
+                trades = self._exchange.fetch_my_trades(symbol, limit=5)
+                matching = [t for t in trades if t.get("order") == order_id]
+                if matching:
+                    actual_entry = float(matching[-1]["price"])
+                    _logger.warning("Entry price resolved via fetch_my_trades for %s: %s", symbol, actual_entry)
+            except Exception as exc:
+                _logger.warning("fetch_my_trades fallback failed for %s: %s", symbol, exc)
 
         # Fallback 2: most recent trade for this symbol — order was placed milliseconds ago.
         if not actual_entry:
-            trades = self._exchange.fetch_my_trades(symbol, limit=1)
-            if trades:
-                actual_entry = float(trades[-1]["price"])
-                _logger.warning("Entry price resolved via latest trade fallback for %s: %s", symbol, actual_entry)
+            try:
+                trades = self._exchange.fetch_my_trades(symbol, limit=1)
+                if trades:
+                    actual_entry = float(trades[-1]["price"])
+                    _logger.warning("Entry price resolved via latest trade fallback for %s: %s", symbol, actual_entry)
+            except Exception as exc:
+                _logger.warning("Latest trade fallback failed for %s: %s", symbol, exc)
 
         if not actual_entry:
+            _logger.error(
+                "Could not determine entry price for %s after fill. Cancelling entry order. "
+                "Raw order response: %s",
+                symbol, entry_order,
+            )
+            self._cancel_orders_safe(symbol, [order_id])
             raise RuntimeError(
                 f"Could not determine entry price for {symbol} after fill. "
-                f"Raw order response: {entry_order}"
+                f"Entry order {order_id} cancelled."
             )
 
         filled_size = float(entry_order.get("filled") or size)
@@ -387,17 +411,25 @@ class HibachiAdapter(ExchangeAdapter):
         This runs at scan start to clean up any such orphans.
         """
         open_syms = {p.symbol for p in open_positions}
-        open_orders = self._exchange.fetch_open_orders()
+        try:
+            open_orders = self._exchange.fetch_open_orders()
+        except Exception as exc:
+            _logger.warning("Hibachi fetch_open_orders failed: %s", exc)
+            return 0
+
         _logger.info(
             "Hibachi orphan check — open_positions=%s open_orders=%s",
             len(open_positions), len(open_orders),
         )
         cancelled = 0
         for order in open_orders:
-            sym = order.get("symbol", "unknown")
-            oid = order.get("id", "unknown")
+            sym = order.get("symbol")
+            oid = order.get("id")
             otype = order.get("type", "unknown")
             oside = order.get("side", "unknown")
+            if not sym or not oid:
+                _logger.warning("Skipping malformed open order: %s", order)
+                continue
             if sym not in open_syms:
                 try:
                     self._exchange.cancel_order(oid, sym)

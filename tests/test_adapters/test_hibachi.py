@@ -247,3 +247,158 @@ class TestHibachiPriceToTick:
         adp, _, mock_ex = adapter
         mock_ex.market.return_value = {"info": {}}
         assert adp._price_to_tick("BTC/USDT:USDT", 78546.12345) == "78546.12345"
+
+
+class TestHibachiOpenPriceFallback:
+    def test_uses_openPrice_when_unified_entryPrice_missing(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.fetch_positions.return_value = [
+            {
+                "symbol": "ETH/USDT:USDT",
+                "contracts": 1.5,
+                "side": "long",
+                "entryPrice": None,
+                "info": {"openPrice": "2354.479339"},
+            },
+        ]
+        positions = adp.get_open_positions()
+        assert len(positions) == 1
+        assert positions[0].entry_price == 2354.479339
+
+    def test_uses_info_markPrice_when_both_unified_fields_missing(self, adapter, caplog):
+        import logging
+        adp, _, mock_ex = adapter
+        mock_ex.fetch_positions.return_value = [
+            {
+                "symbol": "ETH/USDT:USDT",
+                "contracts": 1.5,
+                "side": "long",
+                "entryPrice": None,
+                "markPrice": None,
+                "info": {"markPrice": "2374.357506"},
+            },
+        ]
+        with caplog.at_level(logging.ERROR):
+            positions = adp.get_open_positions()
+        assert len(positions) == 1
+        assert positions[0].entry_price == 2374.357506
+        assert "missing entryPrice" in caplog.text
+
+
+class TestHibachiSideFallback:
+    def test_uses_info_direction_when_side_missing(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.fetch_positions.return_value = [
+            {
+                "symbol": "BTC/USDT:USDT",
+                "contracts": 1.0,
+                "side": None,
+                "entryPrice": 70000,
+                "info": {"direction": "Long"},
+            },
+        ]
+        positions = adp.get_open_positions()
+        assert len(positions) == 1
+        assert positions[0].side == "long"
+
+    def test_short_from_info_direction(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.fetch_positions.return_value = [
+            {
+                "symbol": "BTC/USDT:USDT",
+                "contracts": 1.0,
+                "side": None,
+                "entryPrice": 70000,
+                "info": {"direction": "Short"},
+            },
+        ]
+        positions = adp.get_open_positions()
+        assert len(positions) == 1
+        assert positions[0].side == "short"
+
+
+class TestHibachiPriceToTickScientificNotation:
+    def test_no_scientific_notation(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.market.return_value = {"info": {"tickSize": "0.00001"}}
+        result = adp._price_to_tick("XRP/USDT:USDT", 0.00003)
+        assert "E" not in result
+        assert result == "0.00003"
+
+
+class TestHibachiCancelOrphanOrders:
+    def test_cancels_orphans_for_symbols_without_position(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.fetch_open_orders.return_value = [
+            {"symbol": "BTC/USDT:USDT", "id": "order1", "type": "limit", "side": "sell"},
+            {"symbol": "ETH/USDT:USDT", "id": "order2", "type": "limit", "side": "sell"},
+        ]
+        from src.exchanges.base import Position
+        open_positions = [Position(symbol="ETH/USDT:USDT", side="long", size=1.0, entry_price=2000)]
+        cancelled = adp.cancel_orphan_orders(open_positions)
+        assert cancelled == 1
+        mock_ex.cancel_order.assert_called_once_with("order1", "BTC/USDT:USDT")
+
+    def test_keeps_orders_for_symbols_with_position(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.fetch_open_orders.return_value = [
+            {"symbol": "BTC/USDT:USDT", "id": "order1", "type": "limit", "side": "sell"},
+        ]
+        from src.exchanges.base import Position
+        open_positions = [Position(symbol="BTC/USDT:USDT", side="long", size=1.0, entry_price=70000)]
+        cancelled = adp.cancel_orphan_orders(open_positions)
+        assert cancelled == 0
+        mock_ex.cancel_order.assert_not_called()
+
+    def test_returns_zero_on_fetch_open_orders_failure(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.fetch_open_orders.side_effect = Exception("network down")
+        from src.exchanges.base import Position
+        open_positions = [Position(symbol="BTC/USDT:USDT", side="long", size=1.0, entry_price=70000)]
+        cancelled = adp.cancel_orphan_orders(open_positions)
+        assert cancelled == 0
+
+    def test_skips_malformed_orders(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.fetch_open_orders.return_value = [
+            {"symbol": None, "id": "order1", "type": "limit", "side": "sell"},
+            {"symbol": "BTC/USDT:USDT", "id": None, "type": "limit", "side": "sell"},
+        ]
+        from src.exchanges.base import Position
+        open_positions = []
+        cancelled = adp.cancel_orphan_orders(open_positions)
+        assert cancelled == 0
+        mock_ex.cancel_order.assert_not_called()
+
+
+class TestHibachiPlaceOrder:
+    def test_place_order_success(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.create_order.side_effect = [
+            {"id": "entry123", "status": "pending"},
+            {"id": "tp456"},
+            {"id": "sl789"},
+        ]
+        mock_ex.fetch_order.return_value = {
+            "id": "entry123",
+            "average": 50000.0,
+            "filled": 0.1,
+            "status": "closed",
+        }
+        mock_ex.market.return_value = {"info": {"tickSize": "0.1"}}
+        result = adp.place_order("BTC/USDT:USDT", "buy", 0.1, 0.04, 0.02)
+        assert result.order_id == "entry123"
+        assert result.entry_price == 50000.0
+        assert result.size == 0.1
+        assert result.status == "closed"
+        assert mock_ex.create_order.call_count == 3
+
+    def test_place_order_cancels_entry_when_price_resolution_fails(self, adapter):
+        adp, _, mock_ex = adapter
+        mock_ex.create_order.return_value = {"id": "entry123", "status": "pending"}
+        mock_ex.fetch_order.side_effect = Exception("timeout")
+        mock_ex.fetch_my_trades.side_effect = Exception("timeout")
+        from src.exchanges.base import OrderResult
+        with pytest.raises(RuntimeError, match="Could not determine entry price"):
+            adp.place_order("BTC/USDT:USDT", "buy", 0.1, 0.04, 0.02)
+        mock_ex.cancel_order.assert_called_once_with("entry123", "BTC/USDT:USDT")
