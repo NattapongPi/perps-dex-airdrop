@@ -19,12 +19,12 @@ exchanges:
   - dreamcash:
       position:
         max_concurrent: 8
-  - hibachi:
-      position:
-        max_concurrent: 7
-        clear_positions_on_startup: false
-      scan:
-        top_n: 7
+  # - hibachi:
+  #     position:
+  #       max_concurrent: 7
+  #       clear_positions_on_startup: false
+  #     scan:
+  #       top_n: 7
 
 scan:
   top_n: 5
