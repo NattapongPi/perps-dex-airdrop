@@ -9,13 +9,13 @@ exchanges:
   #       top_n: 1
   #     risk:
   #       risk_pct: 1.0
-  - tradexyz:
-      position:
-        max_concurrent: 10
-      scan:
-        top_n: 10
-      risk:
-        risk_pct: 0.1
+  # - tradexyz:
+  #     position:
+  #       max_concurrent: 10
+  #     scan:
+  #       top_n: 10
+  #     risk:
+  #       risk_pct: 0.1
   # - dreamcash:
   #     position:
   #       max_concurrent: 8
